@@ -22,6 +22,7 @@ from snack import *
 from .mkimg.MKIMGJFFS2Window import *
 from .mkimg.MKIMGINITRAMFSWindow import *
 from .mkimg.MKIMGINITRDWindow import *
+from .mkimg.MKIMGRAWWindow import *
 
 import dnf
 import dnf.cli.demand
@@ -77,7 +78,8 @@ Image_types    = [("JFFS2", "Journalling Flash File System version 2.", "About J
 #Make image function entrance
 Image_type_functions = { 0: MKIMGJFFS2WindowCtrl,
                          1: MKIMGINITRAMFSWindowCtrl,
-                         2: MKIMGINITRDWindowCtrl
+                         2: MKIMGINITRDWindowCtrl,
+                         3: MKIMGRAWWindowCtrl
                        }
 
 ACTION_INSTALL     = 0
