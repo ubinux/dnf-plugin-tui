@@ -92,24 +92,22 @@ def MKIMGSetupINITRAMFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootf
 #------------------------------------------------------------
 def MKIMGINITRAMFSWindowCtrl(insScreen):
 
+    First_time = True
     while True:
         # Check if MKIMGSetupINITRAMFSWindow is first time to be called
-        if 'rcode' in locals().keys():
-            (rcode, fromdir, todir) = MKIMGSetupINITRAMFSWindow(insScreen, fromdir, todir)
-        else:
+        if First_time:
             (rcode, fromdir, todir) = MKIMGSetupINITRAMFSWindow(insScreen)
+            First_time = False
+        else:
+            (rcode, fromdir, todir) = MKIMGSetupINITRAMFSWindow(insScreen, fromdir, todir)
 
         if rcode == "b":
             # back
             return rcode
+
         elif rcode == "n":
             # Call Confirm Function
-            dirname, basename = os.path.split(todir)
-            imgfile = basename
-            if not dirname.startswith("/"):
-               dirname = os.getcwd() + dirname
-               todir = os.getcwd() + '/' + todir
-            rcode = MKIMGConfirmINITRAMFSWindow(insScreen, fromdir, dirname, imgfile)
+            rcode = MKIMGConfirmINITRAMFSWindow(insScreen, fromdir, todir)
             if rcode == "b":
                 continue
             elif rcode == "e":
@@ -124,6 +122,7 @@ def MKIMGINITRAMFSWindowCtrl(insScreen):
                         sys.exit(0)
             else:
                 # Log File Open
+                imgfile = os.path.split(todir)[1]
                 logfile = imgfile + ".log"
                 try:
                     fdLog = OpenLogFile(logfile)
@@ -155,12 +154,19 @@ def MKIMGINITRAMFSWindowCtrl(insScreen):
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir, szImgfile):
+def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir):
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
     TAG_IMG_TYP     = "Image type       : "
     TAG_IMG_FILE    = "Image file name  : "
     TAG_INDENT_SPACE= "                   "
+
+    szTodir, szImgfile = os.path.split(szTodir)
+    #Change relative path to absolute path
+    if not szFromdir.startswith("/"):
+        szFromdir = os.getcwd() + '/' +szFromdir
+    if not szTodir.startswith("/"):
+       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -174,12 +180,8 @@ def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir, szImgfile):
 
     lst_text.append("Are you sure to start making filesystem image ?\n\n")
 
-    if szFromdir.startswith("/"):
-        Fromdir = szFromdir
-    else:
-        Fromdir = os.getcwd() + '/' +szFromdir
     lst_text.append(TAG_FROM_DIR + "\n")
-    lst_text.append(wrapper.fill(Fromdir) + "\n\n")
+    lst_text.append(wrapper.fill(szFromdir) + "\n\n")
 
     lst_text.append(TAG_TO_DIR + "\n")
     lst_text.append(wrapper.fill(szTodir) + "\n\n")

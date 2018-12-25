@@ -73,7 +73,7 @@ def MKIMGSetupJFFS2Window(insScreen, szImgsize="0", szPagesize="4096",\
                         0, 0, (-14, 0, 0, 0))
     txt_imgsize = snack.Entry(12, szImgsize, scroll = 0)
     sg[2].setField(txt_imgsize, 1, 0, (0, 0, 0, 0))
-    sg[2].setField(snack.Textbox(5, 1, "bytes"), 2, 0, (0, 0, 0, 0))
+    sg[2].setField(snack.Textbox(5, 1, "MB"), 2, 0, (0, 0, 0, 0))
 
 
     # Page size
@@ -164,20 +164,22 @@ def MKIMGSetupJFFS2Window(insScreen, szImgsize="0", szPagesize="4096",\
 #------------------------------------------------------------
 def MKIMGJFFS2WindowCtrl(insScreen):
 
+    First_time = True
     while True:
         # Check if MKIMGSetupJFFS2Window is first time to be called
-        if 'rcode' in locals().keys():
-            (rcode, imgsize, pagesize, erasebs, endian, fromdir, todir) = MKIMGSetupJFFS2Window(insScreen, imgsize, pagesize, erasebs, endian, fromdir, todir)
-        else:
+        if First_time:
             (rcode, imgsize, pagesize, erasebs, endian, fromdir, todir) = MKIMGSetupJFFS2Window(insScreen)
+            First_time = False
+        else:
+            (rcode, imgsize, pagesize, erasebs, endian, fromdir, todir) = MKIMGSetupJFFS2Window(insScreen, imgsize, pagesize, erasebs, endian, fromdir, todir)
 
         if rcode == "b":
             # back
             return rcode
         elif rcode == "n":
-            dirname, basename = os.path.split(todir)
-            imgfile = basename
-            rcode = MKIMGConfirmJFFS2Window(insScreen, fromdir, dirname, imgfile, imgsize, pagesize, erasebs, endian)
+            # Call Confirm Function
+            limgsize = int(imgsize) * 1024 * 1024  # transform size from MB to byte
+            rcode = MKIMGConfirmJFFS2Window(insScreen, fromdir, todir, limgsize, pagesize, erasebs, endian)
             if rcode == "b":
                 continue
             elif rcode == "e":
@@ -190,8 +192,10 @@ def MKIMGJFFS2WindowCtrl(insScreen):
                         StopHotkeyScreen(insScreen)
                         insScreen = None
                         sys.exit(0)
+
             else:
                 # Log File Open
+                imgfile = os.path.split(todir)[1]
                 logfile = imgfile + ".log"
                 try:
                     fdLog = OpenLogFile(logfile)
@@ -199,7 +203,7 @@ def MKIMGJFFS2WindowCtrl(insScreen):
                         StopHotkeyScreen(insScreen)
                         insScreen = None
 
-                    MKIMGCreateJFFS2(fromdir, todir, imgsize, pagesize, erasebs, endian, fdLog)
+                    MKIMGCreateJFFS2(fromdir, todir, limgsize, pagesize, erasebs, endian, fdLog)
                     sys.exit(0)
                     
                 finally:
@@ -219,7 +223,6 @@ def MKIMGJFFS2WindowCtrl(insScreen):
 #    insScreen    : instance of snack screen
 #    szFromdir    : Path of From-directory
 #    szTodir      : Path of To-directory
-#    szImgfile    : Name of Image-file
 #    lImgsize     : Image size (long)
 #    lPagesize    : Page size (long)
 #    lErasebs     : Erase block size (long)
@@ -227,7 +230,7 @@ def MKIMGJFFS2WindowCtrl(insScreen):
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmJFFS2Window(insScreen, szFromdir, szTodir, szImgfile, \
+def MKIMGConfirmJFFS2Window(insScreen, szFromdir, szTodir, \
                             lImgsize, lPagesize, lErasebs, iEndian):
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
@@ -242,6 +245,13 @@ def MKIMGConfirmJFFS2Window(insScreen, szFromdir, szTodir, szImgfile, \
     LBL_LITTLE = "Little endian"
     LBL_BIG    = "Big endian"
 
+    szTodir, szImgfile = os.path.split(szTodir)
+    #Change relative path to absolute path
+    if not szFromdir.startswith("/"):
+        szFromdir = os.getcwd() + '/' +szFromdir
+    if not szTodir.startswith("/"):
+       szTodir = os.getcwd() + szTodir
+
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
 
@@ -254,19 +264,12 @@ def MKIMGConfirmJFFS2Window(insScreen, szFromdir, szTodir, szImgfile, \
 
     lst_text.append("Are you sure to start making filesystem image ?\n\n")
 
-    if szFromdir.startswith("/"):
-        Fromdir = szFromdir
-    else:
-        Fromdir = os.getcwd() + '/' +szFromdir
-    lst_text.append(TAG_FROM_DIR + "\n")
-    lst_text.append(wrapper.fill(Fromdir) + "\n\n")
 
-    if szTodir.startswith("/"):
-       Todir = szTodir
-    else:
-       Todir = os.getcwd() + szTodir
+    lst_text.append(TAG_FROM_DIR + "\n")
+    lst_text.append(wrapper.fill(szFromdir) + "\n\n")
+
     lst_text.append(TAG_TO_DIR + "\n")
-    lst_text.append(wrapper.fill(Todir) + "\n\n")
+    lst_text.append(wrapper.fill(szTodir) + "\n\n")
 
     lst_text.append(TAG_IMG_TYP + "JFFS2\n")
 
@@ -275,7 +278,7 @@ def MKIMGConfirmJFFS2Window(insScreen, szFromdir, szTodir, szImgfile, \
     wrapper.subsequent_indent = TAG_INDENT_SPACE
     lst_text.append(wrapper.fill(szImgfile) + "\n")
 
-    imgsize  = lImgsize
+    imgsize  = "%d" % lImgsize
     pagesize = lPagesize
     erasebs  = lErasebs
     lst_text.append(TAG_IMG_SIZE  + imgsize  + " bytes\n")

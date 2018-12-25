@@ -188,7 +188,7 @@ After init, then, you can manage packages by TUI or command line.
         ┌─────────────────────────┤ Select install type ├──────────────────────────┐
         │                                                                          │
         │ New  --->                                                                │
-        │ Load package file  --->                                                  │
+        │ Load package list file  --->                                             │
         │ Reference1(busybox based root file system)  --->                         │
         │ Reference2(systemd based root file system)  --->                         │
         │                                                                          │
@@ -334,9 +334,9 @@ After init, then, you can manage packages by TUI or command line.
 "OK", dnf tui will install the package which the configuration list.
 ```
 
-           ┌──────────────────┤   Config File   ├───────────────────┐
+           ┌────────────────┤  Package List File  ├─────────────────┐
            │                                                        │
-           │ Enter the name of configuration file you wish to load: │
+           │ Enter the name of package list file you wish to load:  │
            │                                                        │
            │   .config___________________________________________   │
            │                                                        │
