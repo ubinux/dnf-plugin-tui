@@ -283,7 +283,7 @@ def MKIMGCreateINITRD(fromdir, imgpath, imgsize, szloop, szmountpt, fdLog):
 
     MSG_START        = "Making the INITRD image start."
     MSG_END_SUCCESS  = "\nMaking the INITRD image succeeded."
-    MSG_END_FAILED   = "Making the INITRD image failed."
+    MSG_END_FAILED   = "\nMaking the INITRD image failed."
     MSG_FINISH       = "RootFS Image Maker finish."
 
     print(MSG_START)
@@ -317,6 +317,9 @@ def MKIMGCreateINITRD(fromdir, imgpath, imgsize, szloop, szmountpt, fdLog):
             rcode = False
             if step == 2 or step == 3:
                 step = 6
+                continue
+            if step == 4 or step == 5:
+                step = step + 1
                 continue
             else:
                 break

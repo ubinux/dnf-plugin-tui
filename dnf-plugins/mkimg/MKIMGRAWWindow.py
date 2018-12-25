@@ -304,8 +304,8 @@ def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
 def MKIMGCreateRAW(fromdir, imgpath, imgsize, szloop, szmountpt, filesystem, fdLog):
 
     MSG_START        = "Making the RAW image start."
-    MSG_END_SUCCESS  = "Making the RAW image succeeded."
-    MSG_END_FAILED   = "Making the RAW image failed."
+    MSG_END_SUCCESS  = "\nMMaking the RAW image succeeded."
+    MSG_END_FAILED   = "\nMMaking the RAW image failed."
     MSG_FINISH       = "RootFS Image Maker finish."
     ERR_MSG_CREATE_SIZE = "WARNING: The image file size is larger than the specified size !!"
 
@@ -342,6 +342,9 @@ def MKIMGCreateRAW(fromdir, imgpath, imgsize, szloop, szmountpt, filesystem, fdL
             rcode = False
             if step == 2 or step == 3:
                 step = 6
+                continue
+            if step == 4 or step == 5:
+                step = step + 1
                 continue
             else:
                 break
