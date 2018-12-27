@@ -354,7 +354,8 @@ compress_or_decompress() {
     current_file_num=0
     compressed_file_num=0
     progress_num=0
-    print_progess 0 0
+
+    # Read the output of tar
     while read line
     do
         current_file_num=$(echo $line | wc -l )
@@ -374,11 +375,12 @@ compress_or_decompress() {
     echo
     ) &
     child_PID=$!
+
     #call tar execution
     if [ $2 == "-C" ];then
         sudo tar xjvvf "$@" >$tmpfifo 2>/dev/null
     else  
-        sudo tar cjvf "$@" >$tmpfifo 2>/dev/null
+        tar cjvf "$@" >$tmpfifo 2>/dev/null
     fi
     wait ${child_PID}
     return ${total_files}
@@ -389,13 +391,15 @@ compress_or_decompress() {
 Put_rootfs_to_destination(){
     cd ${HIDDEN_ROOTFS}
     echo "Prepare rootfs"
-    unset LD_PRELOAD
     compress_or_decompress ../${ROOTFS_TAR} ./*
+    unset LD_PRELOAD
+
     # Check whether the tar ball has been produced
     if [ ! -f ../${ROOTFS_TAR} ];then
         echo "No file named ${ROOTFS_TAR}"
         exit 1
     fi
+
     sudo mkdir -p ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}
     echo "Put rootfs to destination"
     compress_or_decompress ../${ROOTFS_TAR} -C ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date} --numeric-owner
