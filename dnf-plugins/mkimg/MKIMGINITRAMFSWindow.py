@@ -81,9 +81,9 @@ def MKIMGSetupINITRAMFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootf
     return (rcode, fromdir, todir)
 
 #------------------------------------------------------------
-# def MKIMGConfirmINITRAMFSWindowCtrl()
+# def MKIMGINITRAMFSWindowCtrl()
 #
-#   Confirm for making INITRAMFS image.
+#   WindowCtrl for making INITRAMFS image.
 #
 # Input:
 #    insScreen    : instance of snack screen

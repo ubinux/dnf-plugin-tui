@@ -23,6 +23,8 @@ from .mkimg.MKIMGJFFS2Window import *
 from .mkimg.MKIMGINITRAMFSWindow import *
 from .mkimg.MKIMGINITRDWindow import *
 from .mkimg.MKIMGRAWWindow import *
+from .mkimg.MKIMGSquashFSWindow import *
+from .mkimg.MKIMGUBIFSWindow import *
 
 import dnf
 import dnf.cli.demand
@@ -71,15 +73,17 @@ Image_types    = [("JFFS2", "Journalling Flash File System version 2.", "About J
                   ("INITRD", "Linux initial RAM disk.", "About INITRD"), \
                   ("RAW", "Keep the image file as the original filesystem type.", "About RAW"), \
                   ("SquashFS", "A compressed read-only file system for Linux.", "About SquashFS"), \
-                  ("UBIFS", "Unsorted Block Image File System.", "About UBIFS"), \
-                  ("Cramfs", "Compressed ROM file system.", "About Cramfs")
+                  ("UBIFS", "Unsorted Block Image File System.", "About UBIFS")
+#                  ("Cramfs", "Compressed ROM file system.", "About Cramfs")
                   ]
 
 #Make image function entrance
 Image_type_functions = { 0: MKIMGJFFS2WindowCtrl,
                          1: MKIMGINITRAMFSWindowCtrl,
                          2: MKIMGINITRDWindowCtrl,
-                         3: MKIMGRAWWindowCtrl
+                         3: MKIMGRAWWindowCtrl,
+                         4: MKIMGSquashFSWindowCtrl,
+                         5: MKIMGUBIFSWindowCtrl
                        }
 
 ACTION_INSTALL     = 0
@@ -430,9 +434,12 @@ class TuiCommand(commands.Command):
                             self.no_gpl3 = False
                         else:
                             self.no_gpl3 = True
+
+                    # Load Package list install
                     elif custom_type == RECORD_INSTALL:
                         stage = STAGE_RECORD_INSTALL
                         self.no_gpl3 = False
+                    # Load Sample to install
                     elif custom_type >= SAMPLE_INSTALL:
                         sample_type = custom_type-2
                         custom_type = SAMPLE_INSTALL
@@ -442,6 +449,7 @@ class TuiCommand(commands.Command):
                 # ==============================
                 # record install
                 # ==============================
+                # Load Package list to install
                 elif stage == STAGE_RECORD_INSTALL:
 
                     (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \

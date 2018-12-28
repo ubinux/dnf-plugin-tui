@@ -152,13 +152,12 @@ def MKIMGSetupJFFS2Window(insScreen, szImgsize="0", szPagesize="4096",\
     return (rcode, imgsize, pagesize, erasebs, endian, fromdir, todir)
 
 #------------------------------------------------------------
-# def MKIMGConfirmJFFS2WindowCtrl()
+# def MKIMGJFFS2WindowCtrl()
 #
-#   Confirm for making JFFS2 image.
+#   WindowCtrl for making JFFS2 image.
 #
 # Input:
 #    insScreen    : instance of snack screen
-#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------

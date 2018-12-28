@@ -137,13 +137,12 @@ def MKIMGSetupRAWWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.raw.
 
 
 #------------------------------------------------------------
-# def MKIMGConfirmRAWWindowCtrl()
+# def MKIMGRAWWindowCtrl()
 #
-#   Confirm for making RAW image.
+#   WindowCtrl for making RAW image.
 #
 # Input:
 #    insScreen    : instance of snack screen
-#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
@@ -297,15 +296,15 @@ def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
 #    lImgsize     : Image size (long)
 #    szloop       : Loop device
 #    szmountpt    : Mount point for mount command
-#    filesystem  : Filesystem (the same as host)
+#    filesystem   : Filesystem (the same as host)
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
 def MKIMGCreateRAW(fromdir, imgpath, imgsize, szloop, szmountpt, filesystem, fdLog):
 
     MSG_START        = "Making the RAW image start."
-    MSG_END_SUCCESS  = "\nMMaking the RAW image succeeded."
-    MSG_END_FAILED   = "\nMMaking the RAW image failed."
+    MSG_END_SUCCESS  = "\nMaking the RAW image succeeded."
+    MSG_END_FAILED   = "\nMaking the RAW image failed."
     MSG_FINISH       = "RootFS Image Maker finish."
     ERR_MSG_CREATE_SIZE = "WARNING: The image file size is larger than the specified size !!"
 
