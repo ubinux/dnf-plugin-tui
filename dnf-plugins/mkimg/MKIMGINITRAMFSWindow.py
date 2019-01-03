@@ -6,6 +6,8 @@ import os
 from ..window import *
 from .ExecAndOutLog import *
 from .OpenLogFile import *
+from .ButtonErrorWindow import *
+from .MKIMGInfo import *
 
 #------------------------------------------------------------
 # def MKIMGSetupINITRAMFSWindow()
@@ -51,7 +53,6 @@ def MKIMGSetupINITRAMFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootf
     sg[1].setField(txt_todir, 1, 0, (0, 0, 0, 0))
     sg[1].setField(snack.Textbox(5, 1, ""), 2, 0, (0, 0, 0, 0))
 
-   
     for i in range(0, 2):
         g.add(sg[i], 0, i, (0, 0, 0, 0))
     
@@ -87,59 +88,47 @@ def MKIMGSetupINITRAMFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootf
 #
 # Input:
 #    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
-def MKIMGINITRAMFSWindowCtrl(insScreen):
+def MKIMGINITRAMFSWindowCtrl(insScreen, insMKIMGInfo):
 
-    First_time = True
     while True:
-        # Check if MKIMGSetupINITRAMFSWindow is first time to be called
-        if First_time:
-            (rcode, fromdir, todir) = MKIMGSetupINITRAMFSWindow(insScreen)
-            First_time = False
-        else:
-            (rcode, fromdir, todir) = MKIMGSetupINITRAMFSWindow(insScreen, fromdir, todir)
+        #Get the default value for INITRAMFS
+
+        szFromdir = insMKIMGInfo.get_from_dir_path()
+        szTodir = insMKIMGInfo.get_to_dir_path()
+
+        # Completion the Todir if image_file_name exists
+        if insMKIMGInfo.get_image_file_name():
+           szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
+
+        (rcode, szFromdir, szTodir) = \
+            MKIMGSetupINITRAMFSWindow(insScreen, szFromdir, szTodir)
+
+        #Change relative path to absolute path
+        szFromdir = os.path.abspath(szFromdir);
+        szTodir = os.path.abspath(szTodir);
+
+        insMKIMGInfo.set_from_dir_path(szFromdir)
+        insMKIMGInfo.set_to_dir_path(szTodir)
+
+        # Check input paras
+        if rcode == "n":
+            (err, err_str) = insMKIMGInfo.check_from_dir_path()
+            if err != 0:
+                item = err_str
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            else:
+                break;
+
 
         if rcode == "b":
             # back
             return rcode
-
-        elif rcode == "n":
-            # Call Confirm Function
-            rcode = MKIMGConfirmINITRAMFSWindow(insScreen, fromdir, todir)
-            if rcode == "b":
-                continue
-            elif rcode == "e":
-                # exit
-                insScreen.popHelpLine()
-                insScreen.popWindow()
-                exit_hkey = HotkeyExitWindow(insScreen)
-                if exit_hkey == "y":
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-                        sys.exit(0)
-            else:
-                # Log File Open
-                imgfile = os.path.split(todir)[1]
-                logfile = imgfile + ".log"
-                try:
-                    fdLog = OpenLogFile(logfile)
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-
-                    MKIMGCreateINITRAMFS(fromdir, todir, fdLog)
-                    sys.exit(0)
-                finally:
-                    # Log File Close
-                    fdLog.close()
-                    sys.exit(0)
-
-                break
-
-    return rcode
 
 #------------------------------------------------------------
 # def MKIMGConfirmINITRAMFSWindow()
@@ -154,19 +143,12 @@ def MKIMGINITRAMFSWindowCtrl(insScreen):
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir):
+def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir, szImgfile):
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
     TAG_IMG_TYP     = "Image type       : "
     TAG_IMG_FILE    = "Image file name  : "
     TAG_INDENT_SPACE= "                   "
-
-    szTodir, szImgfile = os.path.split(szTodir)
-    #Change relative path to absolute path
-    if not szFromdir.startswith("/"):
-        szFromdir = os.getcwd() + '/' +szFromdir
-    if not szTodir.startswith("/"):
-       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -205,19 +187,69 @@ def MKIMGConfirmINITRAMFSWindow(insScreen, szFromdir, szTodir):
 
     return rcode
 
+#------------------------------------------------------------
+# def MKIMGConfirmINITRAMFSWindowCtrl()
+#
+#   Confirm for making INITRAMFS image.
+#
+# Input:
+#    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
+# Output:
+#    str : pressed button ("n" : OK, "b" : Back)
+#------------------------------------------------------------
+def MKIMGConfirmINITRAMFSWindowCtrl(insScreen, insMKIMGInfo):
+    # Get Parameters
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgfile = insMKIMGInfo.get_image_file_name()
+
+    while True:
+        rcode = MKIMGConfirmINITRAMFSWindow(insScreen, fromdir, todir, imgfile)
+
+        if rcode == "e":
+            # exit
+            insScreen.popHelpLine()
+            insScreen.popWindow()
+            exit_hkey = HotkeyExitWindow(insScreen)
+            if exit_hkey == "y":
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+                    sys.exit(0)
+
+        elif rcode == "o":
+            logfile = imgfile + ".log"
+            try:
+                fdLog = OpenLogFile(logfile)
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+
+                MKIMGCreateINITRAMFS(insMKIMGInfo, fdLog)
+                sys.exit(0)
+
+            finally:
+                # Log File Close
+                fdLog.close()
+                sys.exit(0)
+
+        else:
+            # back
+            return rcode
+
 #-----------------------------------------------------------
 # def MKIMGCreateINITRAMFS()
 #
 #   Create INITRAMFS image.
 #
 # Input:
-#    fromdir      : Path of From-directory
-#    todir        : Path of To-directory
-
+#    insMKIMGInfo : instance of class MKIMGInfo
+#    fdLog        : file descriptor of Log file
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
-def MKIMGCreateINITRAMFS(fromdir, todir, fdLog):
+def MKIMGCreateINITRAMFS(insMKIMGInfo, fdLog):
 
     MSG_START        = "Making the INITRAMFS image start."
     MSG_END_SUCCESS  = "\nMaking the INITRAMFS image succeeded."
@@ -229,9 +261,14 @@ def MKIMGCreateINITRAMFS(fromdir, todir, fdLog):
 
     rcode = True
 
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgname = insMKIMGInfo.get_image_file_name()
+    imgpath = todir + "/" + imgname
+
     # Execute Command
     cmd = "cd \'%s\'; find . -print | cpio -o -H newc > \'%s\'" % \
-            (fromdir, todir)
+            (fromdir, imgpath)
     if ExecAndOutLog(cmd, fdLog) != 0:
         rcode = False
 

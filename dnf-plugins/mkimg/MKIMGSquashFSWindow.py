@@ -6,6 +6,8 @@ import os
 from ..window import *
 from .ExecAndOutLog import *
 from .OpenLogFile import *
+from .ButtonErrorWindow import *
+from .MKIMGInfo import *
 
 #------------------------------------------------------------
 # def MKIMGSetupSquashFSWindow()
@@ -102,60 +104,61 @@ def MKIMGSetupSquashFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs
 #
 # Input:
 #    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
-def MKIMGSquashFSWindowCtrl(insScreen):
+def MKIMGSquashFSWindowCtrl(insScreen, insMKIMGInfo):
 
-    First_time = True
+    ERR_ITEM_BLOCK_SIZE  = "Block size"
+
     while True:
-        # Check if MKIMGSetupSquashFSWindow is first time to be called
-        if First_time:
-            (rcode, fromdir, todir, blksize) = MKIMGSetupSquashFSWindow(insScreen)
-            First_time = False
-        else:
-            (rcode, fromdir, todir, blksize) = MKIMGSetupSquashFSWindow(insScreen, fromdir, todir, blksize)
+        # Get the default value for SquashFS
+        (szimgsize, limgsize) = insMKIMGInfo.get_squashfs_param()
+
+        szFromdir = insMKIMGInfo.get_from_dir_path()
+        szTodir = insMKIMGInfo.get_to_dir_path()
+
+        # Completion the Todir if image_file_name exists
+        if insMKIMGInfo.get_image_file_name():
+           szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
+
+        (rcode, szFromdir, szTodir, szimgsize) = \
+            MKIMGSetupSquashFSWindow(insScreen, szFromdir, szTodir, szimgsize)
+
+        #Change relative path to absolute path
+        szFromdir = os.path.abspath(szFromdir);
+        szTodir = os.path.abspath(szTodir);
+
+        insMKIMGInfo.set_squashfs_param(szimgsize)
+        insMKIMGInfo.set_from_dir_path(szFromdir)
+        insMKIMGInfo.set_to_dir_path(szTodir)
+
+        # Check input params
+        if rcode == "n":
+            (err, err_str) = insMKIMGInfo.check_from_dir_path()
+            if err != 0:
+                item = err_str
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            err = insMKIMGInfo.check_squashfs_param()
+            if err != 0:
+                item = ""
+                if err == MKIMG_LABEL_BLK_SIZE:
+                    item = ERR_ITEM_BLOCK_SIZE
+
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            else:
+                # transfer string to long int
+                insMKIMGInfo.set_squashfs_long_param()
+                break;
 
         if rcode == "b":
             # back
             return rcode
-
-        elif rcode == "n":
-            # Call Confirm Function
-            rcode = MKIMGConfirmSquashFSWindow(insScreen, fromdir, todir, blksize)
-
-            if rcode == "b":
-                continue
-
-            elif rcode == "e":
-                # exit
-                exit_hkey = HotkeyExitWindow(insScreen)
-                if exit_hkey == "y":
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-                        sys.exit(0)
-
-            else:
-                # Log File Open
-                imgfile = os.path.split(todir)[1]
-                logfile = imgfile + ".log"
-                try:
-                    fdLog = OpenLogFile(logfile)
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-
-                    MKIMGCreateSquashFS(fromdir, todir, blksize, fdLog)
-                    sys.exit(0)
-
-                finally:
-                    # Log File Close
-                    fdLog.close()
-                    sys.exit(0)
-                break
-
-    return rcode
 
 #------------------------------------------------------------
 # def MKIMGConfirmSquashFSWindow()
@@ -166,11 +169,12 @@ def MKIMGSquashFSWindowCtrl(insScreen):
 #    insScreen    : instance of snack screen
 #    szFromdir    : Path of From-directory
 #    szTodir      : Path of To-directory
-#    szblksize    : Block size
+#    szImgfile    : Name of Imgfile
+#    lblksize     : Block size(long)
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmSquashFSWindow(insScreen, szFromdir, szTodir, szblksize):
+def MKIMGConfirmSquashFSWindow(insScreen, szFromdir, szTodir, szImgfile, lblksize):
 
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
@@ -179,12 +183,6 @@ def MKIMGConfirmSquashFSWindow(insScreen, szFromdir, szTodir, szblksize):
     TAG_BLK_SIZE    = "block size      : "
     TAG_INDENT_SPACE= "                  "
 
-    szTodir, szImgfile = os.path.split(szTodir)
-    #Change relative path to absolute path
-    if not szFromdir.startswith("/"):
-        szFromdir = os.getcwd() + '/' +szFromdir
-    if not szTodir.startswith("/"):
-       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -210,7 +208,8 @@ def MKIMGConfirmSquashFSWindow(insScreen, szFromdir, szTodir, szblksize):
     wrapper.subsequent_indent = TAG_INDENT_SPACE
     lst_text.append(wrapper.fill(szImgfile) + "\n")
 
-    lst_text.append(TAG_BLK_SIZE   + szblksize + " bytes\n")
+    blksize  = "%d" % lblksize
+    lst_text.append(TAG_BLK_SIZE   + blksize + " bytes\n")
 
     # List To Text
     main_text = "".join(lst_text)
@@ -224,19 +223,71 @@ def MKIMGConfirmSquashFSWindow(insScreen, szFromdir, szTodir, szblksize):
 
     return rcode
 
+#------------------------------------------------------------
+# def MKIMGConfirmSquashFSWindowCtrl()
+#
+#   Confirm for making SquashFS image.
+#
+# Input:
+#    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
+# Output:
+#    str : pressed button ("n" : OK, "b" : Back)
+#------------------------------------------------------------
+def MKIMGConfirmSquashFSWindowCtrl(insScreen, insMKIMGInfo):
+    # Get Parameters
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgfile = insMKIMGInfo.get_image_file_name()
+
+    (szblksize, lblksize) = insMKIMGInfo.get_squashfs_param()
+
+    while True:
+        rcode = MKIMGConfirmSquashFSWindow(insScreen, fromdir, todir, imgfile, lblksize)
+
+        if rcode == "e":
+            # exit
+            insScreen.popHelpLine()
+            insScreen.popWindow()
+            exit_hkey = HotkeyExitWindow(insScreen)
+            if exit_hkey == "y":
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+                    sys.exit(0)
+
+        elif rcode == "o":
+            logfile = imgfile + ".log"
+            try:
+                fdLog = OpenLogFile(logfile)
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+
+                MKIMGCreateSquashFS(insMKIMGInfo, fdLog)
+                sys.exit(0)
+
+            finally:
+                # Log File Close
+                fdLog.close()
+                sys.exit(0)
+
+        else:
+            # back
+            return rcode
+
 #-----------------------------------------------------------
 # def MKIMGCreateSquashFS()
 #
 #   Create SquashFS image.
 #
 # Input:
-#    fromdir      : Path of From-directory
-#    imgpath      : Path of image file
-#    blksize     : Block size
+#    insMKIMGInfo : instance of class MKIMGInfo
+#    fdLog        : file descriptor of Log file
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
-def MKIMGCreateSquashFS(fromdir, imgpath, blksize, fdLog):
+def MKIMGCreateSquashFS(insMKIMGInfo, fdLog):
 
     MSG_START        = "Making the SquashFS image start."
     MSG_END_SUCCESS  = "\nMaking the SquashFS image succeeded."
@@ -248,9 +299,16 @@ def MKIMGCreateSquashFS(fromdir, imgpath, blksize, fdLog):
 
     rcode = True
 
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgname = insMKIMGInfo.get_image_file_name()
+    imgpath = todir + "/" + imgname
+
+    (szblksize, lblksize) = insMKIMGInfo.get_squashfs_param()
+
     # Execute Commands
     cmd = "mksquashfs %s %s -noappend -b %s " % \
-             (fromdir, imgpath, blksize)
+             (fromdir, imgpath, lblksize)
 
     if ExecAndOutLog(cmd, fdLog) != 0:
         rcode = False

@@ -6,6 +6,8 @@ import os
 from ..window import *
 from .ExecAndOutLog import *
 from .OpenLogFile import *
+from .ButtonErrorWindow import *
+from .MKIMGInfo import *
 
 #------------------------------------------------------------
 # def MKIMGSetupRAWWindow()
@@ -30,7 +32,7 @@ from .OpenLogFile import *
 #    str : Filesystem (The same as host)
 #------------------------------------------------------------
 def MKIMGSetupRAWWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.raw.bin", \
-                        szImgsize="10", szLoopdev="/dev/loop0", szMountpt="/mnt", iFilesystem="ext4"):
+                        szImgsize="10", szLoopdev="", szMountpt="", iFilesystem="ext4"):
     TAG_SRC_DIR     = "From directory  : "
     TAG_TARGET_DIR  = "To directory    : "
     TAG_FILESYSTEM  = "Filesystem type : "
@@ -76,7 +78,7 @@ def MKIMGSetupRAWWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.raw.
                         0, 0, (-12, 0, 0, 0))
     txt_imgsize = snack.Entry(15, szImgsize, scroll = 0)
     sg[3].setField(txt_imgsize, 1, 0, (0, 0, 0, 0))
-    sg[3].setField(snack.Textbox(5, 1, "MB"), 2, 0, (0, 0, 0, 0))
+    sg[3].setField(snack.Textbox(5, 1, "bytes"), 2, 0, (0, 0, 0, 0))
 
     # Loop device
     sg[4].setField(snack.Textbox(19, 1, TAG_LOOP_DEVICE), \
@@ -143,61 +145,69 @@ def MKIMGSetupRAWWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.raw.
 #
 # Input:
 #    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
-def MKIMGRAWWindowCtrl(insScreen):
+def MKIMGRAWWindowCtrl(insScreen, insMKIMGInfo):
 
-    First_time = True
+    ERR_ITEM_IMAGE_SIZE  = "Image size"
+    ERR_ITEM_LOOP_DEVICE = "Use loop device"
+    ERR_ITEM_MOUNT_POINT = "Use mount point"
+
     while True:
-        # Check if MKIMGSetupRAWWindow is first time to be called
-        if First_time:
-            (rcode, fromdir, todir, imgsize, loopdev, mountpt, filesystem) = MKIMGSetupRAWWindow(insScreen)
-            First_time = False
-        else:
-            (rcode, fromdir, todir, imgsize, loopdev, mountpt, filesystem) = MKIMGSetupRAWWindow(insScreen, fromdir, todir, imgsize, loopdev, mountpt, filesystem)
+        # Get the default value for RAW
+        (szimgsize, limgsize, szloopdev, szmountpt, ifilesystem) = \
+                insMKIMGInfo.get_raw_param()
+
+        szFromdir = insMKIMGInfo.get_from_dir_path()
+        szTodir = insMKIMGInfo.get_to_dir_path()
+
+        # Completion the Todir if image_file_name exists
+        if insMKIMGInfo.get_image_file_name():
+           szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
+
+        (rcode, szFromdir, szTodir, szimgsize, szloopdev, szmountpt, ifilesystem) =\
+            MKIMGSetupRAWWindow(insScreen, szFromdir, szTodir, szimgsize,\
+                                   szloopdev, szmountpt, ifilesystem)
+
+        # Change relative path to absolute path
+        szFromdir = os.path.abspath(szFromdir);
+        szTodir = os.path.abspath(szTodir);
+
+        # Set values for insMKIMGInfo
+        insMKIMGInfo.set_raw_param(szimgsize, szloopdev, szmountpt, ifilesystem)
+        insMKIMGInfo.set_from_dir_path(szFromdir)
+        insMKIMGInfo.set_to_dir_path(szTodir)
+
+        # Check input paras
+        if rcode == "n":
+            (err, err_str) = insMKIMGInfo.check_from_dir_path()
+            if err != 0:
+                item = err_str
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            err = insMKIMGInfo.check_raw_param()
+            if err != 0:
+                item = ""
+                if err == MKIMG_LABEL_IMG_SIZE:
+                    item = ERR_ITEM_IMAGE_SIZE
+                elif err == MKIMG_LABEL_LOOP_DEV:
+                    item = ERR_ITEM_LOOP_DEVICE
+                elif err == MKIMG_LABEL_MOUNT_PT:
+                    item = ERR_ITEM_MOUNT_POINT
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            else:
+                # transfer string to long int
+                insMKIMGInfo.set_raw_long_param()
+                break;
 
         if rcode == "b":
             # back
             return rcode
-
-        elif rcode == "n":
-            # Call Confirm Function
-            limgsize = int(imgsize) * 1024 * 1024  # transform size from MB to byte
-            rcode = MKIMGConfirmRAWWindow(insScreen, fromdir, todir, limgsize, loopdev, mountpt, filesystem)
-
-            if rcode == "b":
-                continue
-
-            elif rcode == "e":
-                # exit
-                exit_hkey = HotkeyExitWindow(insScreen)
-                if exit_hkey == "y":
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-                        sys.exit(0)
-
-            else:
-                # Log File Open
-                imgfile = os.path.split(todir)[1]
-                logfile = imgfile + ".log"
-                try:
-                    fdLog = OpenLogFile(logfile)
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-
-                    MKIMGCreateRAW(fromdir, todir, limgsize, loopdev, mountpt, filesystem, fdLog)
-                    sys.exit(0)
-
-                finally:
-                    # Log File Close
-                    fdLog.close()
-                    sys.exit(0)
-                break
-
-    return rcode
 
 #------------------------------------------------------------
 # def MKIMGConfirmRAWWindow()
@@ -208,6 +218,7 @@ def MKIMGRAWWindowCtrl(insScreen):
 #    insScreen    : instance of snack screen
 #    szFromdir    : Path of From-directory
 #    szTodir      : Path of To-directory
+#    szImgfile    : Name of img file
 #    lImgsize     : Image size (long)
 #    szLoopdev    : Path of Loop device (default:/dev/loop0)
 #    szMountpt    : Path of Mount point (default:/mnt)
@@ -215,7 +226,7 @@ def MKIMGRAWWindowCtrl(insScreen):
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
+def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir, szImgfile, \
                           lImgsize, szLoopdev, szMountpt, iFilesystem):
 
     TAG_FROM_DIR    = "From directory:"
@@ -227,13 +238,6 @@ def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
     TAG_LOOP_DEVICE = "Use loop device : "
     TAG_MOUNT_POINT = "Use mount point : "
     TAG_INDENT_SPACE= "  "
-
-    szTodir, szImgfile = os.path.split(szTodir)
-    #Change relative path to absolute path
-    if not szFromdir.startswith("/"):
-        szFromdir = os.getcwd() + '/' +szFromdir
-    if not szTodir.startswith("/"):
-       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -265,14 +269,6 @@ def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
     lst_text.append(TAG_LOOP_DEVICE + szLoopdev + "\n")
     lst_text.append(TAG_MOUNT_POINT + szMountpt + "\n")
 
-    #wrapper.initial_indent    = TAG_LOOP_DEVICE
-    #wrapper.subsequent_indent = TAG_INDENT_SPACE
-    #lst_text.append(wrapper.fill(szLoopdev) + "\n")
-
-    #wrapper.initial_indent    = TAG_MOUNT_POINT
-    #wrapper.subsequent_indent = TAG_INDENT_SPACE
-    #lst_text.append(wrapper.fill(szMountpt) + "\n")
-
     # List To Text
     main_text = "".join(lst_text)
     del lst_text
@@ -285,22 +281,76 @@ def MKIMGConfirmRAWWindow(insScreen, szFromdir, szTodir,  \
 
     return rcode
 
+#------------------------------------------------------------
+# def MKIMGConfirmRAWWindowCtrl()
+#
+#   Confirm for making RAW image.
+#
+# Input:
+#    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
+# Output:
+#    str : pressed button ("n" : OK, "b" : Back)
+#------------------------------------------------------------
+def MKIMGConfirmRAWWindowCtrl(insScreen, insMKIMGInfo):
+    # Get Parameters
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgfile = insMKIMGInfo.get_image_file_name()
+
+    (szimgsize, limgsize, szloopdev, szmountpt, ifilesystem) = \
+                               insMKIMGInfo.get_raw_param()
+
+    szloopdev = os.path.abspath(szloopdev)
+    szmountpt = os.path.abspath(szmountpt)
+
+    while True:
+        rcode = MKIMGConfirmRAWWindow(insScreen, fromdir, todir, imgfile,\
+                                         limgsize, szloopdev, szmountpt, ifilesystem)
+
+        if rcode == "e":
+            # exit
+            insScreen.popHelpLine()
+            insScreen.popWindow()
+            exit_hkey = HotkeyExitWindow(insScreen)
+            if exit_hkey == "y":
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+                    sys.exit(0)
+
+        elif rcode == "o":
+            logfile = imgfile + ".log"
+            try:
+                fdLog = OpenLogFile(logfile)
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+
+                MKIMGCreateRAW(insMKIMGInfo, fdLog)
+                sys.exit(0)
+
+            finally:
+                # Log File Close
+                fdLog.close()
+                sys.exit(0)
+
+        else:
+            # back
+            return rcode
+
 #-----------------------------------------------------------
 # def MKIMGCreateRAW()
 #
 #   Create RAW image.
 #
 # Input:
-#    fromdir      : Path of From-directory
-#    imgpath      : Path of image file
-#    lImgsize     : Image size (long)
-#    szloop       : Loop device
-#    szmountpt    : Mount point for mount command
-#    filesystem   : Filesystem (the same as host)
+#    insMKIMGInfo : instance of class MKIMGInfo
+#    fdLog        : file descriptor of Log file
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
-def MKIMGCreateRAW(fromdir, imgpath, imgsize, szloop, szmountpt, filesystem, fdLog):
+def MKIMGCreateRAW(insMKIMGInfo, fdLog):
 
     MSG_START        = "Making the RAW image start."
     MSG_END_SUCCESS  = "\nMaking the RAW image succeeded."
@@ -313,15 +363,21 @@ def MKIMGCreateRAW(fromdir, imgpath, imgsize, szloop, szmountpt, filesystem, fdL
 
     rcode = True
 
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgname = insMKIMGInfo.get_image_file_name()
+    imgpath = todir + "/" + imgname
+
+    (szimgsize, limgsize, szloop, szmountpt, filesystem) = insMKIMGInfo.get_raw_param()
+
     szloop    = os.path.abspath(szloop)
     szmountpt = os.path.abspath(szmountpt)
 
     # utils for mkfs command
     mkfscmd = "mkfs.%s" % filesystem
 
-    MKIMG_BLOCK_SIZE = 512 # Block size
     # calculate count
-    count = int(imgsize/MKIMG_BLOCK_SIZE)
+    count = int(limgsize/MKIMG_BLOCK_SIZE)
 
     # Init all cmd steps
     cmd_steps = { 0: "dd if=/dev/zero of=\'%s\' bs=%s count=%s" %(imgpath, MKIMG_BLOCK_SIZE, count), \

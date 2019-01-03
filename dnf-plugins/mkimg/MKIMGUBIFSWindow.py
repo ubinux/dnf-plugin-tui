@@ -6,6 +6,8 @@ import os
 from ..window import *
 from .ExecAndOutLog import *
 from .OpenLogFile import *
+from .ButtonErrorWindow import *
+from .MKIMGInfo import *
 
 #------------------------------------------------------------
 # def MKIMGSetupUBIFSWindow()
@@ -33,7 +35,7 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
     TAG_SRC_DIR     = "From directory  : "
     TAG_TARGET_DIR  = "To directory    : "
     TAG_MINSIZE     = "Minimum I/O unit size             : "
-    TAG_LEB         = "Logical erase block size          : "
+    TAG_LEB         = "Logical erase block size( > 15360): "
     TAG_MEB         = "Maximum logical erase block count : "
 
     # Create Button instance
@@ -123,7 +125,6 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
     insScreen.popWindow()
     return (rcode, fromdir, todir, blksize, leb, meb)
 
-
 #------------------------------------------------------------
 # def MKIMGUBIFSWindowCtrl()
 #
@@ -131,60 +132,68 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
 #
 # Input:
 #    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
-def MKIMGUBIFSWindowCtrl(insScreen):
+def MKIMGUBIFSWindowCtrl(insScreen, insMKIMGInfo):
 
-    First_time = True
+    ERR_ITEM_MIN  = "minimum I/O unit size"
+    ERR_ITEM_LEB = "Logical Erase Block"
+    ERR_ITEM_MEB = "Maximam Erase Block"
+
     while True:
-        # Check if MKIMGSetupUBIFSWindow is first time to be called
-        if First_time:
-            (rcode, fromdir, todir, blksize, leb, meb) = MKIMGSetupUBIFSWindow(insScreen)
-            First_time = False
-        else:
-            (rcode, fromdir, todir, blksize, leb, meb) = MKIMGSetupUBIFSWindow(insScreen, fromdir, todir, blksize, leb, meb)
+        # Get the default value for UBIFS
+        (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = \
+                insMKIMGInfo.get_ubifs_param()
+
+        szFromdir = insMKIMGInfo.get_from_dir_path()
+        szTodir = insMKIMGInfo.get_to_dir_path()
+
+        # Completion the Todir if image_file_name exists
+        if insMKIMGInfo.get_image_file_name():
+           szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
+
+        (rcode, szFromdir, szTodir, szblksize, szleb, szmeb) = \
+            MKIMGSetupUBIFSWindow(insScreen, szFromdir, szTodir, szblksize, szleb, szmeb)
+
+        #Change relative path to absolute path
+        szFromdir = os.path.abspath(szFromdir);
+        szTodir = os.path.abspath(szTodir);
+
+        insMKIMGInfo.set_ubifs_param(szblksize, szleb, szmeb)
+        insMKIMGInfo.set_from_dir_path(szFromdir)
+        insMKIMGInfo.set_to_dir_path(szTodir)
+
+        # Check input params
+        if rcode == "n":
+            (err, err_str) = insMKIMGInfo.check_from_dir_path()
+            if err != 0:
+                item = err_str
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            err = insMKIMGInfo.check_ubifs_param()
+            if err != 0:
+                item = ""
+                if err == MKIMG_LABEL_BLK_SIZE:
+                    item = ERR_ITEM_MIN
+                elif err == MKIMG_LABEL_LEB_SIZE:
+                    item = ERR_ITEM_LEB
+                elif err == MKIMG_LABEL_MEB_SIZE:
+                    item = ERR_ITEM_MEB
+
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            else:
+                # transfer string to long int
+                insMKIMGInfo.set_ubifs_long_param()
+                break;
 
         if rcode == "b":
             # back
             return rcode
-
-        elif rcode == "n":
-            # Call Confirm Function
-            rcode = MKIMGConfirmUBIFSWindow(insScreen, fromdir, todir, blksize, leb, meb)
-
-            if rcode == "b":
-                continue
-
-            elif rcode == "e":
-                # exit
-                exit_hkey = HotkeyExitWindow(insScreen)
-                if exit_hkey == "y":
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-                        sys.exit(0)
-
-            else:
-                # Log File Open
-                imgfile = os.path.split(todir)[1]
-                logfile = imgfile + ".log"
-                try:
-                    fdLog = OpenLogFile(logfile)
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-
-                    MKIMGCreateUBIFS(fromdir, todir, blksize, leb, meb, fdLog)
-                    sys.exit(0)
-
-                finally:
-                    # Log File Close
-                    fdLog.close()
-                    sys.exit(0)
-                break
-
-    return rcode
 
 #------------------------------------------------------------
 # def MKIMGConfirmUBIFSWindow()
@@ -194,15 +203,16 @@ def MKIMGUBIFSWindowCtrl(insScreen):
 # Input:
 #    insScreen    : instance of snack screen
 #    szFromdir    : Path of From-directory
+#    szImgfile    : Name of Imgfile
 #    szTodir      : Path of To-directory
-#    blksize      : Minimum I/O unit size
-#    leb          : Logical erase block size
-#    meb          : Maximum logical erase block count
+#    lblksize     : Minimum I/O unit size (long)
+#    lleb         : Logical erase block size(long)
+#    lmeb         : Maximum logical erase block count(long)
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir,  \
-                          blksize, leb, meb):
+def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir, szImgfile, \
+                          lblksize, lleb, lmeb):
 
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
@@ -212,13 +222,6 @@ def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir,  \
     TAG_LEB         = "Logical erase block size          : "
     TAG_MEB         = "Maximum logical erase block count : "
     TAG_INDENT_SPACE= "                                    "
-
-    szTodir, szImgfile = os.path.split(szTodir)
-    #Change relative path to absolute path
-    if not szFromdir.startswith("/"):
-        szFromdir = os.getcwd() + '/' +szFromdir
-    if not szTodir.startswith("/"):
-       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -244,10 +247,13 @@ def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir,  \
     wrapper.subsequent_indent = TAG_INDENT_SPACE
     lst_text.append(wrapper.fill(szImgfile) + "\n")
 
+    blksize  = "%d" % lblksize
     lst_text.append(TAG_BLK_SIZE + blksize + " bytes\n")
 
+    leb  = "%d" % lleb
     lst_text.append(TAG_LEB + leb + " bytes\n")
 
+    meb = "%d" % lmeb
     lst_text.append(TAG_MEB + meb + " count\n")
 
     # List To Text
@@ -262,23 +268,73 @@ def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir,  \
 
     return rcode
 
+#------------------------------------------------------------
+# def MKIMGConfirmUBIFSWindowCtrl()
+#
+#   Confirm for making UBIFSFS image.
+#
+# Input:
+#    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
+# Output:
+#    str : pressed button ("n" : OK, "b" : Back)
+#------------------------------------------------------------
+def MKIMGConfirmUBIFSWindowCtrl(insScreen, insMKIMGInfo):
+    # Get Parameters
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgfile = insMKIMGInfo.get_image_file_name()
+
+    (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = \
+                               insMKIMGInfo.get_ubifs_param()
+
+    while True:
+        rcode = MKIMGConfirmUBIFSWindow(insScreen, fromdir, todir, imgfile,\
+                                      lblksize, lleb, lmeb)
+
+        if rcode == "e":
+            # exit
+            insScreen.popHelpLine()
+            insScreen.popWindow()
+            exit_hkey = HotkeyExitWindow(insScreen)
+            if exit_hkey == "y":
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+                    sys.exit(0)
+
+        elif rcode == "o":
+            logfile = imgfile + ".log"
+            try:
+                fdLog = OpenLogFile(logfile)
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+
+                MKIMGCreateUBIFS(insMKIMGInfo, fdLog)
+                sys.exit(0)
+
+            finally:
+                # Log File Close
+                fdLog.close()
+                sys.exit(0)
+
+        else:
+            # back
+            return rcode
+
 #-----------------------------------------------------------
 # def MKIMGCreateUBIFS()
 #
 #   Create UBIFS image.
 #
 # Input:
-#    fromdir      : Path of From-directory
-#    imgpath      : Path of image file
-#    lImgsize     : Image size (long)
-#    blksize      : Minimum I/O unit size
-#    leb          : Logical erase block size
-#    meb          : Maximum logical erase block count
-#    fdLog        : File Description of log
+#    insMKIMGInfo : instance of class MKIMGInfo
+#    fdLog        : file descriptor of Log file
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
-def MKIMGCreateUBIFS(fromdir, imgpath, blksize, leb, meb, fdLog):
+def MKIMGCreateUBIFS(insMKIMGInfo, fdLog):
 
     MSG_START        = "Making the UBIFS image start."
     MSG_END_SUCCESS  = "\nMaking the UBIFS image succeeded."
@@ -291,9 +347,16 @@ def MKIMGCreateUBIFS(fromdir, imgpath, blksize, leb, meb, fdLog):
 
     rcode = True
 
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgname = insMKIMGInfo.get_image_file_name()
+    imgpath = todir + "/" + imgname
+
+    (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = insMKIMGInfo.get_ubifs_param()
+
     # Execute Commands
     cmd = "mkfs.ubifs -m %s -e %s -c %s -r %s %s " % \
-             (blksize, leb, meb, fromdir, imgpath)
+             (lblksize, lleb, lmeb, fromdir, imgpath)
     if ExecAndOutLog(cmd, fdLog) != 0:
         rcode = False
 

@@ -19,12 +19,15 @@ from .window import *
 from .utils import fetchSPDXorSRPM, read_environ
 import sys, os, copy, textwrap, snack, string, time, re, shutil, hashlib
 from snack import *
+
+from .Define import _TXT_ROOT_TITLE, Install_actions, Custom_actions, Image_types
 from .mkimg.MKIMGJFFS2Window import *
 from .mkimg.MKIMGINITRAMFSWindow import *
 from .mkimg.MKIMGINITRDWindow import *
 from .mkimg.MKIMGRAWWindow import *
 from .mkimg.MKIMGSquashFSWindow import *
 from .mkimg.MKIMGUBIFSWindow import *
+from .mkimg.MKIMGInfo import *
 
 import dnf
 import dnf.cli.demand
@@ -44,46 +47,21 @@ import dnf.cli.utils
 import dnf.yum.misc
 from subprocess import call
 
-_TXT_ROOT_TITLE = "Package Installer"
-
-#Install actions list
-#Install_actions[type][0]  :  menu item
-#Install_actions[type][1]  :  Help information
-#Install_actions[type][2]  :  Title information (optional)
-Install_actions = [("Install", "Choose it to install packages.", "About Install"), \
-                   ("Remove", "Choose it to remove packages.", "About Remove"), \
-                   ("Upgrade", "Choose it to upgrade packages.", "About Upgrade"), \
-                   ("Create binary package archives(rpm)", "Choose it to create package archive."), \
-                   ("Create a source archive(src.rpm)", "Choose it to create source archive."), \
-                   ("Create an spdx archive(spdx)", "Choose it to create SPDX archive."), \
-                   ("Create archive(rpm, src.rpm and spdx files)", "Choose it to create all archive."), \
-                   ("Make filesystem image", "Choose it, you can make different kind of filesystem images for rootfs.", "About filesystem image")
-                  ]
-
-Custom_actions = [("New", "Install without package list file."), \
-                  ("Load package list file", "Load package list file")
-                  ]
-
-#Make image type list
-#Image_types[type][0]  :  menu item
-#Image_types[type][1]  :  Help information
-#Image_types[type][2]  :  Title information (optional)
-Image_types    = [("JFFS2", "Journalling Flash File System version 2.", "About JFFS2"), \
-                  ("INITRAMFS", "Initial ramdisk.", "About INITRAMFS"), \
-                  ("INITRD", "Linux initial RAM disk.", "About INITRD"), \
-                  ("RAW", "Keep the image file as the original filesystem type.", "About RAW"), \
-                  ("SquashFS", "A compressed read-only file system for Linux.", "About SquashFS"), \
-                  ("UBIFS", "Unsorted Block Image File System.", "About UBIFS")
-#                  ("Cramfs", "Compressed ROM file system.", "About Cramfs")
-                  ]
-
 #Make image function entrance
-Image_type_functions = { 0: MKIMGJFFS2WindowCtrl,
-                         1: MKIMGINITRAMFSWindowCtrl,
-                         2: MKIMGINITRDWindowCtrl,
-                         3: MKIMGRAWWindowCtrl,
-                         4: MKIMGSquashFSWindowCtrl,
-                         5: MKIMGUBIFSWindowCtrl
+Image_type_functions = { 0: [MKIMGJFFS2WindowCtrl, MKIMGConfirmJFFS2WindowCtrl],
+                         1: [MKIMGINITRAMFSWindowCtrl, MKIMGConfirmINITRAMFSWindowCtrl],
+                         2: [MKIMGINITRDWindowCtrl, MKIMGConfirmINITRDWindowCtrl],
+                         3: [MKIMGRAWWindowCtrl, MKIMGConfirmRAWWindowCtrl],
+                         4: [MKIMGSquashFSWindowCtrl, MKIMGConfirmSquashFSWindowCtrl],
+                         5: [MKIMGUBIFSWindowCtrl, MKIMGConfirmUBIFSWindowCtrl]
+                       }
+
+Image_type_name      = { 0: "rootfs.jffs2.bin",
+                         1: "rootfs.initramfs.bin",
+                         2: "rootfs.initrd.bin",
+                         3: "rootfs.raw.bin",
+                         4: "rootfs.SquashFS.bin",
+                         5: "rootfs.ubifs.bin"
                        }
 
 ACTION_INSTALL     = 0
@@ -117,7 +95,7 @@ ATTENTON_NONE_UPGRADE   = 2
 if "OECORE_NATIVE_SYSROOT" in os.environ:
     NATIVE_SYSROOT = os.environ["OECORE_NATIVE_SYSROOT"]
 else:
-    NATIVE_SYSROOT = "/opt/poky/2.5/sysroots/x86_64-pokysdk-linux"
+    NATIVE_SYSROOT = "/opt/poky/2.6/sysroots/x86_64-pokysdk-linux"
 SAMPLE = NATIVE_SYSROOT + "/usr/share/dnf"
 
 logger = logging.getLogger('dnf')
@@ -594,19 +572,48 @@ class TuiCommand(commands.Command):
                 # Select image type
                 # ==============================
                 elif stage == STAGE_IMAGE_TYPE:
-                    (result, self.image_type) = PKGCUSActionWindowCtrl(self.screen, Image_types, self.image_type, title="Select Image type")
-                    if result == "b":
-                        # back
-                        stage = STAGE_INSTALL_TYPE
-                        continue
-                    elif result == "ENTER":
-                        #Press ENTER, you can call the corresponding make image function
-                        rcode = Image_type_functions[self.image_type](self.screen)
-                        #retrun button of MKIMGxxxWindowCtrl
-                        if rcode == "b":
-                            # back
-                            stage = STAGE_IMAGE_TYPE
-                            continue
+                    state = 0
+                    while state < 3:
+                        # Select Image Type
+                        if state == 0:
+                            (result, self.image_type) = PKGCUSActionWindowCtrl(self.screen, Image_types, self.image_type, title="Select Image type")
+                            if result == "b":
+                                # back
+                                stage = STAGE_INSTALL_TYPE
+                                break
+
+                            insMKIMGInfo = MKIMGInfo(self.image_type)
+
+                        # Setup Configuration
+                        elif state == 1:
+                            #Press ENTER, you can call the corresponding make image function
+                            rcode = Image_type_functions[self.image_type][0](self.screen, insMKIMGInfo)
+                            #retrun button of MKIMGxxxWindowCtrl
+                            if rcode == "b":
+                                # back
+                                state = 0
+                                continue
+
+                        # Confirm
+                        elif state == 2:
+                            # Make Image file name
+                            if os.path.isdir(insMKIMGInfo.get_to_dir_path()):
+                                insMKIMGInfo.set_image_file_name(Image_type_name[self.image_type])
+                            else:
+                            # If you give the abspath of img_patch, no need to set the img_name
+                                (to_dir, img_name) = os.path.split(insMKIMGInfo.get_to_dir_path())
+                                insMKIMGInfo.set_to_dir_path(to_dir)
+                                insMKIMGInfo.set_image_file_name(img_name)
+
+                            # information confirm function
+                            rcode = Image_type_functions[self.image_type][1](self.screen, insMKIMGInfo)
+                            if rcode == "b":
+                                state = 1
+                                continue
+
+                        state = state + 1
+
+                    continue
 
                 # ==============================
                 # Process function

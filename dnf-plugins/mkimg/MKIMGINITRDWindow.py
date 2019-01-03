@@ -6,6 +6,8 @@ import os
 from ..window import *
 from .ExecAndOutLog import *
 from .OpenLogFile import *
+from .ButtonErrorWindow import *
+from .MKIMGInfo import *
 
 #------------------------------------------------------------
 # def MKIMGSetupINITRDWindow()
@@ -27,7 +29,7 @@ from .OpenLogFile import *
 #    str : Path of Mount point
 #------------------------------------------------------------
 def MKIMGSetupINITRDWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.initrd.bin", \
-                          szImgsize="10", szLoopdev="/dev/loop0", szMountpt="/mnt"):
+                          szImgsize="10", szLoopdev="", szMountpt=""):
     TAG_SRC_DIR     = "From directory  : "
     TAG_TARGET_DIR  = "To directory    : "
     TAG_IMG_SIZE    = "Image size      : "
@@ -65,7 +67,7 @@ def MKIMGSetupINITRDWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.i
                         0, 0, (-12, 0, 0, 0))
     txt_imgsize = snack.Entry(15, szImgsize, scroll = 0)
     sg[2].setField(txt_imgsize, 1, 0, (0, 0, 0, 0))
-    sg[2].setField(snack.Textbox(5, 1, "MB"), 2, 0, (0, 0, 0, 0))
+    sg[2].setField(snack.Textbox(5, 1, "bytes"), 2, 0, (0, 0, 0, 0))
 
     # Loop device
     sg[3].setField(snack.Textbox(19, 1, TAG_LOOP_DEVICE), \
@@ -127,54 +129,70 @@ def MKIMGSetupINITRDWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.i
 #
 # Input:
 #    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back)
 #------------------------------------------------------------
-def MKIMGINITRDWindowCtrl(insScreen):
+def MKIMGINITRDWindowCtrl(insScreen, insMKIMGInfo):
 
-    First_time = True
+    ERR_ITEM_IMAGE_SIZE  = "Image size"
+    ERR_ITEM_LOOP_DEVICE = "Use loop device"
+    ERR_ITEM_MOUNT_POINT = "Use mount point"
+
     while True:
-        # Check if MKIMGSetupINITRDWindow is first time to be called
-        if First_time:
-            (rcode, fromdir, todir, imgsize, loopdev, mountpt) = MKIMGSetupINITRDWindow(insScreen)
-            First_time = False
-        else:
-            (rcode, fromdir, todir, imgsize, loopdev, mountpt) = MKIMGSetupINITRDWindow(insScreen, fromdir, todir, imgsize, loopdev, mountpt)
+        # Get the default value for INITRD
+        (szimgsize, limgsize, szloopdev, szmountpt) = \
+                               insMKIMGInfo.get_initrd_param()
+
+
+        szFromdir = insMKIMGInfo.get_from_dir_path()
+        szTodir = insMKIMGInfo.get_to_dir_path()
+
+        # Completion the Todir if image_file_name exists
+        if insMKIMGInfo.get_image_file_name():
+           szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
+
+        (rcode, szFromdir, szTodir, szimgsize, szloopdev, szmountpt) =\
+            MKIMGSetupINITRDWindow(insScreen, szFromdir, szTodir, szimgsize,\
+                                   szloopdev, szmountpt)
+
+        #Change relative path to absolute path
+        szFromdir = os.path.abspath(szFromdir);
+        szTodir = os.path.abspath(szTodir);
+
+        #set values for insMKIMGInfo
+        insMKIMGInfo.set_initrd_param(szimgsize, szloopdev, szmountpt)
+        insMKIMGInfo.set_from_dir_path(szFromdir)
+        insMKIMGInfo.set_to_dir_path(szTodir)
+
+        # Check input paras
+        if rcode == "n":
+            (err, err_str) = insMKIMGInfo.check_from_dir_path()
+            if err != 0:
+                item = err_str
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            err = insMKIMGInfo.check_initrd_param()
+            if err != 0:
+                item = ""
+                if err == MKIMG_LABEL_IMG_SIZE:
+                    item = ERR_ITEM_IMAGE_SIZE
+                elif err == MKIMG_LABEL_LOOP_DEV:
+                    item = ERR_ITEM_LOOP_DEVICE
+                elif err == MKIMG_LABEL_MOUNT_PT:
+                    item = ERR_ITEM_MOUNT_POINT
+                ButtonErrorWindow(insScreen, item)
+                continue
+
+            else:
+                # transfer string to long int
+                insMKIMGInfo.set_initrd_long_param()
+                break;
 
         if rcode == "b":
             # back
             return rcode
-        elif rcode == "n":
-            limgsize = int(imgsize) * 1024 * 1024  # transform size from MB to byte
-            rcode = MKIMGConfirmINITRDWindow(insScreen, fromdir, todir, limgsize, loopdev, mountpt)
-            if rcode == "b":
-                continue
-            elif rcode == "e":
-                # exit
-                exit_hkey = HotkeyExitWindow(insScreen)
-                if exit_hkey == "y":
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-                        sys.exit(0)
-            else:
-                # Log File Open
-                imgfile = os.path.split(todir)[1]
-                logfile = imgfile + ".log"
-                try:
-                    fdLog = OpenLogFile(logfile)
-                    if insScreen != None:
-                        StopHotkeyScreen(insScreen)
-                        insScreen = None
-
-                    MKIMGCreateINITRD(fromdir, todir, limgsize, loopdev, mountpt, fdLog)
-                    sys.exit(0)
-                finally:
-                    # Log File Close
-                    fdLog.close()
-                    sys.exit(0)
-
-    return rcode
 
 #------------------------------------------------------------
 # def MKIMGConfirmINITRDWindow()
@@ -185,13 +203,14 @@ def MKIMGINITRDWindowCtrl(insScreen):
 #    insScreen    : instance of snack screen
 #    szFromdir    : Path of From-directory
 #    szTodir      : Path of To-directory
+#    szImgfile    : Name of Imgfile
 #    lImgsize     : Image size (long)
 #    szLoopdev    : Path of Loop device
 #    szMountpt    : Path of mount point
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
-def MKIMGConfirmINITRDWindow(insScreen, szFromdir, szTodir,  \
+def MKIMGConfirmINITRDWindow(insScreen, szFromdir, szTodir, szImgfile, \
                              lImgsize, szLoopdev, szMountpt):
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
@@ -204,12 +223,6 @@ def MKIMGConfirmINITRDWindow(insScreen, szFromdir, szTodir,  \
     TAG_INDENT_SPACE= "                  "
 
     LBL_EXT2 = "ext2"
-
-    szTodir, basename = os.path.split(szTodir)
-    szImgfile = basename
-    #Change relative path to absolute path
-    if not szTodir.startswith("/"):
-       szTodir = os.getcwd() + szTodir
 
     # Create Main Text
     (main_width, main_height) = GetButtonMainSize(insScreen)
@@ -262,6 +275,64 @@ def MKIMGConfirmINITRDWindow(insScreen, szFromdir, szTodir,  \
 
     return rcode
 
+#------------------------------------------------------------
+# def MKIMGConfirmINITRDWindowCtrl()
+#
+#   Confirm for making INITRD image.
+#
+# Input:
+#    insScreen    : instance of snack screen
+#    insMKIMGInfo : instance of class MKIMGInfo
+# Output:
+#    str : pressed button ("n" : OK, "b" : Back)
+#------------------------------------------------------------
+def MKIMGConfirmINITRDWindowCtrl(insScreen, insMKIMGInfo):
+    # Get Parameters
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgfile = insMKIMGInfo.get_image_file_name()
+
+    (szimgsize, limgsize, szloopdev, szmountpt) = \
+                               insMKIMGInfo.get_initrd_param()
+
+    szloopdev = os.path.abspath(szloopdev)
+    szmountpt = os.path.abspath(szmountpt)
+
+    while True:
+        rcode = MKIMGConfirmINITRDWindow(insScreen, fromdir, todir, imgfile,\
+                                         limgsize, szloopdev, szmountpt)
+
+        if rcode == "e":
+            # exit
+            insScreen.popHelpLine()
+            insScreen.popWindow()
+            exit_hkey = HotkeyExitWindow(insScreen)
+            if exit_hkey == "y":
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+                    sys.exit(0)
+
+        elif rcode == "o":
+            logfile = imgfile + ".log"
+            try:
+                fdLog = OpenLogFile(logfile)
+                if insScreen != None:
+                    StopHotkeyScreen(insScreen)
+                    insScreen = None
+
+                MKIMGCreateINITRD(insMKIMGInfo, fdLog)
+                sys.exit(0)
+
+            finally:
+                # Log File Close
+                fdLog.close()
+                sys.exit(0)
+
+        else:
+            # back
+            return rcode
+
 #-----------------------------------------------------------
 # def MKIMGCreateINITRD()
 #
@@ -269,17 +340,12 @@ def MKIMGConfirmINITRDWindow(insScreen, szFromdir, szTodir,  \
 #   Create INITRD image.
 #
 # Input:
-#    fromdir      : Path of From-directory
-#    imgpath      : Path of image file
-#    imgsize      : Size of image file
-#    szloop       : Loop device
-#    szmountpt    : Mount point for mount command
-#    fdLog        : fd of log file
-#
+#    insMKIMGInfo : instance of class MKIMGInfo
+#    fdLog        : file descriptor of Log file
 # Output:
 #    bool         : success=True, fail=False
 #-----------------------------------------------------------
-def MKIMGCreateINITRD(fromdir, imgpath, imgsize, szloop, szmountpt, fdLog):
+def MKIMGCreateINITRD(insMKIMGInfo, fdLog):
 
     MSG_START        = "Making the INITRD image start."
     MSG_END_SUCCESS  = "\nMaking the INITRD image succeeded."
@@ -291,13 +357,19 @@ def MKIMGCreateINITRD(fromdir, imgpath, imgsize, szloop, szmountpt, fdLog):
 
     rcode = True
 
-    MKIMG_BLOCK_SIZE = 512 # Block size
-    # calculate count
-    count = int(imgsize/MKIMG_BLOCK_SIZE)
-    
-    # Make Tmpfile
-    tmpfname = "/tmp/make_fsimage.initrd"
+    fromdir = insMKIMGInfo.get_from_dir_path()
+    todir   = insMKIMGInfo.get_to_dir_path()
+    imgname = insMKIMGInfo.get_image_file_name()
+    imgpath = todir + "/" + imgname
 
+    (szimgsize, limgsize, szloop, szmountpt) = insMKIMGInfo.get_initrd_param()
+
+    szloop    = os.path.abspath(szloop)
+    szmountpt = os.path.abspath(szmountpt)
+
+    # calculate count
+    count = int(limgsize/MKIMG_BLOCK_SIZE)
+    
     # Init all cmd steps
     cmd_steps = { 0: "dd if=/dev/zero of=\'%s\' bs=%s count=%s" %(imgpath, MKIMG_BLOCK_SIZE, count), \
                   1: "/sbin/losetup \'%s\' \'%s\'" %(szloop, imgpath), \
