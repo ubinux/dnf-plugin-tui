@@ -1,8 +1,5 @@
-#!/usr/bin/python
-
 #
-# Copyright (C) Fujitsu Limited 2005  All rights reserved
-# Copyright (C) Fujitsu Computer Technologies Limited 2009  All rights reserved
+# Copyright (C) Fujitsu Limited 2018 All rights reserved
 #
 
 import string

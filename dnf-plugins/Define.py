@@ -1,7 +1,5 @@
-#!/usr/bin/python
-
 #
-# Copyright (C) Fujitsu Limited 2018  All rights reserved
+# Copyright (C) Fujitsu Limited 2018 All rights reserved
 #
 
 #==================================================
