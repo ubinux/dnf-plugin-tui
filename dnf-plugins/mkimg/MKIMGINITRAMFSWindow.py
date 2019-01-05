@@ -272,10 +272,10 @@ def MKIMGCreateINITRAMFS(insMKIMGInfo, fdLog):
     if ExecAndOutLog(cmd, fdLog) != 0:
         rcode = False
 
-    #if rcode == True:
-    #    cmd = "gzip -9 \'%s\'" % todir
-    #    if ExecAndOutLog(cmd, fdLog) != 0:
-    #        rcode = False
+    if rcode == True:
+        cmd = "gzip -9 \'%s\'" % imgpath
+        if ExecAndOutLog(cmd, fdLog) != 0:
+            rcode = False
 
     if rcode == True:
         os.chmod(todir, 0o644)

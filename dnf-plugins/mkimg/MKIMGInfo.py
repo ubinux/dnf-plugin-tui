@@ -87,7 +87,7 @@ class MKIMGInfo:
     #------------------------------------------------------------------
     def __init__(self, iType):
         # Common Parameters for each image
-        self.sFrom_dir = ".rootfs-x86"
+        self.sFrom_dir = ""
         self.sTo_dir   = os.getcwd()
         self.sImg_file = ""
         self.iType      = iType
@@ -97,7 +97,7 @@ class MKIMGInfo:
         self.lJFFS2_Img_size  = 0
         self.sJFFS2_Page_size = "4K"
         self.lJFFS2_Page_size = 4096
-        self.sJFFS2_Erase_bs  = "16"
+        self.sJFFS2_Erase_bs  = "64K"
         self.lJFFS2_Erase_bs  = 0
         self.iJFFS2_Endian    = 0
 
