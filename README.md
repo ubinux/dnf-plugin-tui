@@ -540,6 +540,12 @@ file system or Reference2 to install systemd based root file system.
 
 
         F4:Back  F5:Info  F9:Exit
+
+	Note
+          - Before using this function, ensure these tools are exist on your host:
+	    mtd-utils
+	    squashfs-tools
+
 ```
 ##### 3.1.3.7 JFFS2 image
 &emsp;&emsp;Select JFFS2 in "Select Image type" to make JFFS2 image.
@@ -653,7 +659,8 @@ file system or Reference2 to install systemd based root file system.
         │                   └────┘   └──────┘                     │
         │                                                         │
         └─────────────────────────────────────────────────────────┘
-        Note
+
+	Note
           - Use loop device means the loop device you want to use during creating filesystem image.
           - Use mount point means the mount point directory you want to use during creating filesystem image.
 
@@ -785,7 +792,8 @@ file system or Reference2 to install systemd based root file system.
         │                     └────┘   └──────┘                      │
         │                                                            │
         └────────────────────────────────────────────────────────────┘
-        Note
+
+	Note
           For example:
           ~# mtdinfo /dev/mtd0
           mtd0
