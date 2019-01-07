@@ -188,7 +188,7 @@ After init, then, you can manage packages by TUI or command line.
         ┌─────────────────────────┤ Select install type ├──────────────────────────┐
         │                                                                          │
         │ New  --->                                                                │
-        │ Load package list file  --->                                             │
+        │ Load package file  --->                                                  │
         │ Reference1(busybox based root file system)  --->                         │
         │ Reference2(systemd based root file system)  --->                         │
         │                                                                          │
@@ -334,9 +334,9 @@ After init, then, you can manage packages by TUI or command line.
 "OK", dnf tui will install the package which the configuration list.
 ```
 
-           ┌────────────────┤  Package List File  ├─────────────────┐
+           ┌──────────────────┤   Config File   ├───────────────────┐
            │                                                        │
-           │ Enter the name of package list file you wish to load:  │
+           │ Enter the name of configuration file you wish to load: │
            │                                                        │
            │   .config___________________________________________   │
            │                                                        │
@@ -487,7 +487,7 @@ file system or Reference2 to install systemd based root file system.
           - [R] Means the package has been selected, installed and will be used to created.
 ```
 #### 3.1.3.6 manage archive
-&emsp;&emsp;You can choose the package that you want to get archive after enter "Create archive(rpm, src.rpm and spdx files)" in main interface.
+&emsp;&emsp;You can choose the package that you want to get archive after entering "Create archive(rpm, src.rpm and spdx files)" in main interface.
 ```
         ┌────────────────────────────┤ Select package ├────────────────────────────┐
         │                                                                          │
@@ -514,6 +514,317 @@ file system or Reference2 to install systemd based root file system.
         Note
           - []  Means the package has not been selected.
           - [A] Means the package has been selected, installed and will be used to created.
+```
+#### 3.1.3.7 Make filesystem image
+&emsp;&emsp;You can choose the filesystem image which you want to make after entering "Make filesystem image" in main interface.
+```
+        ┌──────────────────────────┤ Select Image type ├───────────────────────────┐
+        │                                                                          │
+        │ JFFS2  --->                                                              │
+        │ INITRAMFS  --->                                                          │
+        │ INITRD  --->                                                             │
+        │ RAW  --->                                                                │
+        │ SquashFS  --->                                                           │
+        │ UBIFS  --->                                                              │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+
+
+        F4:Back  F5:Info  F9:Exit
+```
+##### 3.1.3.7 JFFS2 image
+&emsp;&emsp;Select JFFS2 in "Select Image type" to make JFFS2 image.
+```
+        ┌───────────────────┤ JFFS2 Parameter ├───────────────────┐
+        │                                                         │
+        │   From directory   : /home/test/rootfs____________      │
+        │   To directory     : /home/test/image-dir_________      │
+        │   Image size       : 10M_________bytes                  │
+        │   Page size        : 4K__________bytes                  │
+        │   Erase block size : 256K________bytes                  │
+        │   Endian(Default is little) :  [ ] Big endian           │
+        │                                                         │
+        │                   ┌────┐   ┌──────┐                     │
+        │                   │ OK │   │ Back │                     │
+        │                   └────┘   └──────┘                     │
+        │                                                         │
+        └─────────────────────────────────────────────────────────┘
+
+        Note
+          - From directory is the value of the directory of root filesystem you make before.
+          - To directory is the directory where you want to put your image file.
+          - Image size must bigger than the size of root filesystem you choose.
+          - Page size and Erase block size can obtain from the message from mtdinfo:
+          Here is an example from a embedded board:
+
+          ~# mtdinfo /dev/mtd0
+          mtd0
+          Type:                           nand
+          Eraseblock size:                262144 bytes, 256.0 KiB
+          Amount of eraseblocks:          2048 (536870912 bytes, 512.0 MiB)
+          Minimum input/output unit size: 4096 bytes
+          Sub-page size:                  4096 bytes
+
+          - Endian means create a little-endian filesystem or big-endian filesystem.
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                        ↑ │
+        │                                                                        ▮ │
+        │ From directory:                                                        ▒ │
+        │   /home/test/rootfs                                                    ▒ │
+        │                                                                        ▒ │
+        │ To directory:                                                          ▒ │
+        │   /home/test/image-dir                                                 ▒ │
+        │                                                                        ▒ │
+        │ Image type       : JFFS2                                               ▒ │
+        │ Image file name  : rootfs.jffs2.bin                                    ▒ │
+        │ Image size       : 10485760 bytes                                      ▒ │
+        │ Page size        : 4096 bytes                                          ↓ │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+```
+##### 3.1.3.8 INITRAMFS image
+&emsp;&emsp;Select INITRAMFS in "Select Image type" to make INITRAMFS image.
+```
+        ┌─────────────────┤ INITRAMFS Parameter ├─────────────────┐
+        │                                                         │
+        │   From directory   : /home/test/rootfs____________      │
+        │   To directory     : /home/test/image-dir_________      │
+        │                                                         │
+        │                   ┌────┐   ┌──────┐                     │
+        │                   │ OK │   │ Back │                     │
+        │                   └────┘   └──────┘                     │
+        │                                                         │
+        └─────────────────────────────────────────────────────────┘
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                          │
+        │                                                                          │
+        │ From directory:                                                          │
+        │   /home/test/rootfs                                                      │
+        │                                                                          │
+        │ To directory:                                                            │
+        │   /home/test/image-dir                                                   │
+        │                                                                          │
+        │ Image type       : INITRAMFS                                             │
+        │ Image file name  : rootfs.initramfs.bin                                  │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+
+```
+##### 3.1.3.9 INITRD image
+&emsp;&emsp;Select INITRD in "Select Image type" to make INITRD image.
+```
+        ┌──────────────────┤ INITRD Parameter ├───────────────────┐
+        │                                                         │
+        │   From directory  :  /home/test/rootfs_____________     │
+        │   To directory    :  h/image-dir/rootfs.initrd.bin_     │
+        │   Image size      :  10m___________bytes                │
+        │   Use loop device :  /dev/loop0_____                    │
+        │   Use mount point :  /mnt___________                    │
+        │                                                         │
+        │                   ┌────┐   ┌──────┐                     │
+        │                   │ OK │   │ Back │                     │
+        │                   └────┘   └──────┘                     │
+        │                                                         │
+        └─────────────────────────────────────────────────────────┘
+        Note
+          - Use loop device means the loop device you want to use during creating filesystem image.
+          - Use mount point means the mount point directory you want to use during creating filesystem image.
+
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                          │
+        │                                                                          │
+        │ From directory:                                                          │
+        │   /home/test/rootfs                                                      │
+        │                                                                          │
+        │ To directory:                                                            │
+        │   /home/test/image-dir                                                   │
+        │                                                                          │
+        │ Image type      : INITRD                                                 │
+        │ Image file name : rootfs.initrd.bin                                      │
+        │ Image size      : 10485760 bytes                                         │
+        │ Filesystem type : ext2                                                   │
+        │ Use loop device : /dev/loop0                                             │
+        │ Use mount point : /mnt                                                   │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+```
+##### 3.1.3.10 RAW image
+&emsp;&emsp;Select RAW in "Select Image type" to make RAW image.
+```
+        ┌────────────────────┤ RAW Parameter ├────────────────────┐
+        │                                                         │
+        │   From directory  :  /home/test/rootfs_____________     │
+        │   To directory    :  /test/image-dir/rootfs.raw.bin_    │
+        │   Filesystem type :  ext4___________                    │
+        │   Image size      :  10m___________bytes                │
+        │   Use loop device :  /dev/loop0_______                  │
+        │   Use mount point :  /mnt___________                    │
+        │                                                         │
+        │                   ┌────┐   ┌──────┐                     │
+        │                   │ OK │   │ Back │                     │
+        │                   └────┘   └──────┘                     │
+        │                                                         │
+        └─────────────────────────────────────────────────────────┘
+
+        Note
+          - Filesystem type can be ext2/ext3/ext4.
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                          │
+        │                                                                          │
+        │ From directory:                                                          │
+        │   /home/test/rootfs                                                      │
+        │                                                                          │
+        │ To directory:                                                            │
+        │   /home/test/image-dir                                                   │
+        │                                                                          │
+        │ Image type      : RAW                                                    │
+        │ Image file name : rootfs.raw.bin                                         │
+        │ Image size      : 10485760 bytes                                         │
+        │ Filesystem type : ext4                                                   │
+        │ Use loop device : /dev/loop0                                             │
+        │ Use mount point : /mnt                                                   │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+```
+##### 3.1.3.11 SquashFS image
+&emsp;&emsp;Select SquashFS in "Select Image type" to make SquashFS image.
+```
+        ┌─────────────────┤ SquashFS Parameter ├──────────────────┐
+        │                                                         │
+        │   From directory  :  /home/test/rootfs____________      │
+        │   To directory    :  /home/test/image-dir_________      │
+        │   Block size         4K_____________bytes               │
+        │                                                         │
+        │                   ┌────┐   ┌──────┐                     │
+        │                   │ OK │   │ Back │                     │
+        │                   └────┘   └──────┘                     │
+        │                                                         │
+        └─────────────────────────────────────────────────────────┘
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                          │
+        │                                                                          │
+        │ From directory:                                                          │
+        │   /home/test/rootfs                                                      │
+        │                                                                          │
+        │ To directory:                                                            │
+        │   /home/test/image-dir                                                   │
+        │                                                                          │
+        │ Image type      : SquashFS                                               │
+        │ Image file name : rootfs.SquashFS.bin                                    │
+        │ block size      : 4096 bytes                                             │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+```
+##### 3.1.3.12 UBIFS image
+&emsp;&emsp;Select UBIFS in "Select Image type" to make UBIFS image.
+```
+        ┌────────────────────┤ UBIFS Parameter ├─────────────────────┐
+        │                                                            │
+        │   From directory  :  /home/test/rootfs________________     │
+        │   To directory    :  /home/test/image-dir_____________     │
+        │   Minimum I/O unit size             : 4k_____________bytes │
+        │   Logical erase block size( > 15360): 248k___________bytes │
+        │   Maximum logical erase block count : 2048___________count │
+        │                                                            │
+        │                     ┌────┐   ┌──────┐                      │
+        │                     │ OK │   │ Back │                      │
+        │                     └────┘   └──────┘                      │
+        │                                                            │
+        └────────────────────────────────────────────────────────────┘
+        Note
+          For example:
+          ~# mtdinfo /dev/mtd0
+          mtd0
+          Type:                           nand
+          Eraseblock size:                262144 bytes, 256.0 KiB
+          Amount of eraseblocks:          2048 (536870912 bytes, 512.0 MiB)
+          Minimum input/output unit size: 4096 bytes
+          Sub-page size:                  4096 bytes
+
+          -  Minimum I/O unit size means Minimum input/output unit size, in this example is 4096.
+          -  Logical erase block size in this example = (Eraseblock size) - ( Minimum input/output unit size) - 4k(256k - 4k - 4k) = 248k
+          -  Maximum logical erase block count means Amount of eraseblocks(2048)
+
+```
+&emsp;&emsp;After completing the settings, click ok.You can see the information you filled out.
+```
+        ┌───────────────────────────────┤ Ready ? ├────────────────────────────────┐
+        │                                                                          │
+        │ Are you sure to start making filesystem image ?                          │
+        │                                                                          │
+        │ From directory:                                                          │
+        │   /home/test/root                                                        │
+        │                                                                          │
+        │ To directory:                                                            │
+        │   /home/test/image-dir                                                   │
+        │                                                                          │
+        │ Image type      : UBIFS                                                  │
+        │ Image file name                   : rootfs.ubifs.bin                     │
+        │ Minimum I/O unit size             : 4096 bytes                           │
+        │ Logical erase block size          : 253952 bytes                         │
+        │ Maximum logical erase block count : 2048 count                           │
+        │                                                                          │
+        │                                                                          │
+        │                      ┌────┐   ┌──────┐   ┌──────┐                        │
+        │                      │ OK │   │ Back │   │ Exit │                        │
+        │                      └────┘   └──────┘   └──────┘                        │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+
 ```
 
 ### 3.1.4 Manage srpm or spdx file by command line
