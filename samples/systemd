@@ -1,2 +1,5 @@
 systemd
 busybox
+systemd-analyze
+systemd-initramfs
+systemd-bash-completion
