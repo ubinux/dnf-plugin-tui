@@ -57,7 +57,7 @@ Image_type_functions = { 0: [MKIMGJFFS2WindowCtrl, MKIMGConfirmJFFS2WindowCtrl],
                        }
 
 Image_type_name      = { 0: "rootfs.jffs2.bin",
-                         1: "rootfs.initramfs.bin",
+                         1: "rootfs.initramfs.cpio",
                          2: "rootfs.initrd.bin",
                          3: "rootfs.raw.bin",
                          4: "rootfs.SquashFS.bin",

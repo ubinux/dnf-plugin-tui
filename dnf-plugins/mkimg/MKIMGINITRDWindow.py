@@ -378,7 +378,7 @@ def MKIMGCreateINITRD(insMKIMGInfo, fdLog):
                   4: "cd \'%s\'; find . -print | cpio -p \'%s\'" %(fromdir, szmountpt), \
                   5: "umount \'%s\'" %szmountpt, \
                   6: "/sbin/losetup -d \'%s\'" %szloop, \
-                  7: "gzip -9 \'%s\'" %imgpath \
+                  7: "gzip -9 -f \'%s\'" %imgpath \
                    }
 
     # Execute Commands

@@ -273,7 +273,7 @@ def MKIMGCreateINITRAMFS(insMKIMGInfo, fdLog):
         rcode = False
 
     if rcode == True:
-        cmd = "gzip -9 \'%s\'" % imgpath
+        cmd = "gzip -9 -f \'%s\'" % imgpath
         if ExecAndOutLog(cmd, fdLog) != 0:
             rcode = False
 
