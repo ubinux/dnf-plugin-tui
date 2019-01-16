@@ -1,0 +1,65 @@
+Subject: [poky 2.6] [PATCH] Added some nativesdk oss for nativesdk-dnf.
+
+Signed-off-by: Zheng Ruoqin <zhengrq.fnst@cn.fujitsu.com>
+---
+ meta/classes/toolchain-scripts.bbclass                             | 1 +
+ meta/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bb | 4 ++++
+ meta/recipes-devtools/file/file_5.34.bb                            | 1 +
+ meta/recipes-devtools/rpm/rpm_4.14.2.bb                            | 1 +
+ 4 files changed, 7 insertions(+)
+
+diff --git a/meta/classes/toolchain-scripts.bbclass b/meta/classes/toolchain-scripts.bbclass
+index 6d1ba69..eebfd97 100644
+--- a/meta/classes/toolchain-scripts.bbclass
++++ b/meta/classes/toolchain-scripts.bbclass
+@@ -101,6 +101,7 @@ toolchain_shared_env_script () {
+	echo 'export CPPFLAGS="${TARGET_CPPFLAGS}"' >> $script
+	echo 'export KCFLAGS="--sysroot=$SDKTARGETSYSROOT"' >> $script
+	echo 'export OECORE_DISTRO_VERSION="${DISTRO_VERSION}"' >> $script
++        echo 'export MACHINE_ARCH=${MACHINE_ARCH}' >> $script
+	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
+	echo 'export ARCH=${ARCH}' >> $script
+	echo 'export CROSS_COMPILE=${TARGET_PREFIX}' >> $script
+diff --git a/meta/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bb b/meta/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bb
+index 4bf0ac0..3c5214a 100644
+--- a/meta/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bb
++++ b/meta/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bb
+@@ -24,6 +24,12 @@ RDEPENDS_${PN} = "\
+     nativesdk-cmake \
+     ${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'nativesdk-wayland', '', d)} \
+     nativesdk-sdk-provides-dummy \
++    nativesdk-dnf \
++    nativesdk-e2fsprogs \
++    nativesdk-libnewt-python \
++    nativesdk-createrepo-c \
++    nativesdk-gpgme \
++    nativesdk-update-rc.d \
+     nativesdk-bison \
+     nativesdk-flex \
+     "
+diff --git a/meta/recipes-devtools/file/file_5.34.bb b/meta/recipes-devtools/file/file_5.34.bb
+index 5d92913..f0eda72 100644
+--- a/meta/recipes-devtools/file/file_5.34.bb
++++ b/meta/recipes-devtools/file/file_5.34.bb
+@@ -45,6 +45,7 @@ do_install_append_class-nativesdk() {
+
+ BBCLASSEXTEND = "native nativesdk"
+ PROVIDES_append_class-native = " file-replacement-native"
++PROVIDES_append_class-nativesdk = " file-replacement-nativesdk"
+ # Don't use NATIVE_PACKAGE_PATH_SUFFIX as that hides libmagic from anyone who
+ # depends on file-replacement-native.
+ bindir_append_class-native = "/file-native"
+diff --git a/meta/recipes-devtools/rpm/rpm_4.14.2.bb b/meta/recipes-devtools/rpm/rpm_4.14.2.bb
+index 200fe4d..221e86f 100644
+--- a/meta/recipes-devtools/rpm/rpm_4.14.2.bb
++++ b/meta/recipes-devtools/rpm/rpm_4.14.2.bb
+@@ -49,6 +49,7 @@ S = "${WORKDIR}/git"
+
+ DEPENDS = "nss libarchive db file popt xz bzip2 dbus elfutils python3"
+ DEPENDS_append_class-native = " file-replacement-native bzip2-replacement-native"
++DEPENDS_append_class-nativesdk = " file-replacement-nativesdk"
+
+ inherit autotools gettext pkgconfig python3native
+ export PYTHON_ABI
+--
+2.7.4
