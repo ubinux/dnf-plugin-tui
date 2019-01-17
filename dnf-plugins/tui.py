@@ -53,7 +53,7 @@ Image_type_functions = { 0: [MKIMGJFFS2WindowCtrl, MKIMGConfirmJFFS2WindowCtrl],
                          2: [MKIMGINITRDWindowCtrl, MKIMGConfirmINITRDWindowCtrl],
                          3: [MKIMGRAWWindowCtrl, MKIMGConfirmRAWWindowCtrl],
                          4: [MKIMGSquashFSWindowCtrl, MKIMGConfirmSquashFSWindowCtrl],
-                         5: [MKIMGUBIFSWindowCtrl, MKIMGConfirmUBIFSWindowCtrl]
+                         5: [MKIMGUBIFSWindowCtrl, MKIMGConfirmUBIFSWindowCtrl],
                        }
 
 Image_type_name      = { 0: "rootfs.jffs2.bin",
@@ -61,7 +61,7 @@ Image_type_name      = { 0: "rootfs.jffs2.bin",
                          2: "rootfs.initrd.bin",
                          3: "rootfs.raw.bin",
                          4: "rootfs.SquashFS.bin",
-                         5: "rootfs.ubifs.bin"
+                         5: "rootfs.ubi.img"
                        }
 
 ACTION_INSTALL     = 0

@@ -21,6 +21,8 @@ from .MKIMGInfo import *
 #    szMinSize    : Minimum I/O unit size
 #    szLeb        : Logical erase block size
 #    szMeb        : Maximum logical erase block count
+#    szvid        : Id of /dev/ubifs
+#    szvname      : Vol Name of /dev/ubifs
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #    str : fromdir
@@ -28,26 +30,30 @@ from .MKIMGInfo import *
 #    str : blksize
 #    str : leb
 #    str : meb
+#    str : vid
+#    str : vname
 #------------------------------------------------------------
-def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ubifs.bin", \
-                        szMinSize='512', szLeb='131072', szMeb='3000'):
+def MKIMGSetupUBIFSWindow(insScreen, szFromdir, szTodir, \
+                        szMinSize, szLeb, szMeb, szVol_id, szVol_name):
 
     TAG_SRC_DIR     = "From directory  : "
     TAG_TARGET_DIR  = "To directory    : "
     TAG_MINSIZE     = "Minimum I/O unit size             : "
     TAG_LEB         = "Logical erase block size( > 15360): "
     TAG_MEB         = "Maximum logical erase block count : "
+    TAG_VID         = "Id of UBIFS device : "
+    TAG_VNAME       = "Name of UBIFS Volume : "
 
     # Create Button instance
     buttons = (("OK", "ok"), ("Back", "back"))
     bb = snack.ButtonBar(insScreen, buttons)
 
     # Create Grid instance
-    g = snack.GridForm(insScreen, "UBIFS Parameter", 1, 7)
+    g = snack.GridForm(insScreen, "UBIFS Parameter", 1, 8)
 
     #init snack.Grid object dict
     sg = {}
-    for i in range(0, 5):
+    for i in range(0, 7):
         sg[i] = snack.Grid(3, 1)
 
     # source directory
@@ -64,7 +70,7 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
     sg[1].setField(txt_todir, 1, 0, (0, 0, 0, 0))
     sg[1].setField(snack.Textbox(5, 1, ""), 2, 0, (0, 0, 0, 0))
 
-    #  Minimam Block Size
+    # Minimam Block Size
     sg[2].setField(snack.Textbox(36, 1, TAG_MINSIZE), \
                         0, 0, (2, 0, 0, 0))
     txt_blksize = snack.Entry(15, szMinSize, scroll = 0)
@@ -85,11 +91,25 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
     sg[4].setField(txt_meb, 1, 0, (0, 0, 0, 0))
     sg[4].setField(snack.Textbox(5, 1, "count"), 2, 0, (0, 0, 0, 0))
 
-    for i in range(0, 5):
+    # Vol id of ubifs device
+    sg[5].setField(snack.Textbox(36, 1, TAG_VID), \
+                        0, 0, (2, 0, 0, 0))
+    txt_vid = snack.Entry(15, szVol_id, scroll = 0)
+    sg[5].setField(txt_vid, 1, 0, (0, 0, 0, 0))
+    sg[5].setField(snack.Textbox(5, 1, ""), 2, 0, (0, 0, 0, 0))
+
+    # Vol name of ubifs device
+    sg[6].setField(snack.Textbox(36, 1, TAG_VNAME), \
+                        0, 0, (2, 0, 0, 0))
+    txt_vname = snack.Entry(15, szVol_name, scroll = 0)
+    sg[6].setField(txt_vname, 1, 0, (0, 0, 0, 0))
+    sg[6].setField(snack.Textbox(5, 1, ""), 2, 0, (0, 0, 0, 0))
+
+    for i in range(0, 7):
         g.add(sg[i], 0, i, (0, 0, 0, 0))
 
-    #Add buttons
-    g.add(bb, 0, 6, (0, 1, 0, -1))
+    # Add buttons
+    g.add(bb, 0, 7, (0, 1, 0, -1))
 
     # Display window
     while True:
@@ -122,8 +142,16 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
     meb = txt_meb.value()
     meb = meb.strip()
 
+    # set maximam block size
+    vid = txt_vid.value()
+    vid = vid.strip()
+
+    # set maximam block size
+    vname = txt_vname.value()
+    vname = vname.strip()
+
     insScreen.popWindow()
-    return (rcode, fromdir, todir, blksize, leb, meb)
+    return (rcode, fromdir, todir, blksize, leb, meb, vid, vname)
 
 #------------------------------------------------------------
 # def MKIMGUBIFSWindowCtrl()
@@ -138,13 +166,14 @@ def MKIMGSetupUBIFSWindow(insScreen, szFromdir=".rootfs-x86", szTodir="rootfs.ub
 #------------------------------------------------------------
 def MKIMGUBIFSWindowCtrl(insScreen, insMKIMGInfo):
 
-    ERR_ITEM_MIN  = "minimum I/O unit size"
+    ERR_ITEM_MIN = "minimum I/O unit size"
     ERR_ITEM_LEB = "Logical Erase Block"
     ERR_ITEM_MEB = "Maximam Erase Block"
+    ERR_ITEM_VID = "Id of UBIFS device"
 
     while True:
         # Get the default value for UBIFS
-        (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = \
+        (szblksize, lblksize, szleb, lleb, szmeb, lmeb, szvid, szvname) = \
                 insMKIMGInfo.get_ubifs_param()
 
         szFromdir = insMKIMGInfo.get_from_dir_path()
@@ -154,14 +183,14 @@ def MKIMGUBIFSWindowCtrl(insScreen, insMKIMGInfo):
         if insMKIMGInfo.get_image_file_name():
            szTodir = szTodir + "/" + insMKIMGInfo.get_image_file_name()
 
-        (rcode, szFromdir, szTodir, szblksize, szleb, szmeb) = \
-            MKIMGSetupUBIFSWindow(insScreen, szFromdir, szTodir, szblksize, szleb, szmeb)
+        (rcode, szFromdir, szTodir, szblksize, szleb, szmeb, szvid, szvname) = \
+            MKIMGSetupUBIFSWindow(insScreen, szFromdir, szTodir, szblksize, szleb, szmeb, szvid, szvname)
 
         #Change relative path to absolute path
         szFromdir = os.path.abspath(szFromdir);
         szTodir = os.path.abspath(szTodir);
 
-        insMKIMGInfo.set_ubifs_param(szblksize, szleb, szmeb)
+        insMKIMGInfo.set_ubifs_param(szblksize, szleb, szmeb, szvid, szvname)
         insMKIMGInfo.set_from_dir_path(szFromdir)
         insMKIMGInfo.set_to_dir_path(szTodir)
 
@@ -182,6 +211,8 @@ def MKIMGUBIFSWindowCtrl(insScreen, insMKIMGInfo):
                     item = ERR_ITEM_LEB
                 elif err == MKIMG_LABEL_MEB_SIZE:
                     item = ERR_ITEM_MEB
+                elif err == MKIMG_LABEL_VOL_ID:
+                    item = ERR_ITEM_VID
 
                 ButtonErrorWindow(insScreen, item)
                 continue
@@ -208,11 +239,13 @@ def MKIMGUBIFSWindowCtrl(insScreen, insMKIMGInfo):
 #    lblksize     : Minimum I/O unit size (long)
 #    lleb         : Logical erase block size(long)
 #    lmeb         : Maximum logical erase block count(long)
+#    szvid        : Id of /dev/ubifs
+#    szvname      : Vol Name of /dev/ubifs
 # Output:
 #    str : pressed button ("n" : OK, "b" : Back, "e" : Exit)
 #------------------------------------------------------------
 def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir, szImgfile, \
-                          lblksize, lleb, lmeb):
+                          lblksize, lleb, lmeb, szvid, szvname):
 
     TAG_FROM_DIR    = "From directory:"
     TAG_TO_DIR      = "To directory:"
@@ -221,6 +254,8 @@ def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir, szImgfile, \
     TAG_BLK_SIZE    = "Minimum I/O unit size             : "
     TAG_LEB         = "Logical erase block size          : "
     TAG_MEB         = "Maximum logical erase block count : "
+    TAG_VID         = "Id of UBIFS device                  : "
+    TAG_VNAME       = "Name of UBIFS Volume                : "
     TAG_INDENT_SPACE= "                                    "
 
     # Create Main Text
@@ -256,6 +291,9 @@ def MKIMGConfirmUBIFSWindow(insScreen, szFromdir, szTodir, szImgfile, \
     meb = "%d" % lmeb
     lst_text.append(TAG_MEB + meb + " count\n")
 
+    lst_text.append(TAG_VID + "/dev/ubifs" + szvid + "\n")
+    lst_text.append(TAG_VNAME + szvname + "\n")
+
     # List To Text
     main_text = "".join(lst_text)
     del lst_text
@@ -285,12 +323,12 @@ def MKIMGConfirmUBIFSWindowCtrl(insScreen, insMKIMGInfo):
     todir   = insMKIMGInfo.get_to_dir_path()
     imgfile = insMKIMGInfo.get_image_file_name()
 
-    (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = \
+    (szblksize, lblksize, szleb, lleb, szmeb, lmeb, szvid, szvname) = \
                                insMKIMGInfo.get_ubifs_param()
 
     while True:
         rcode = MKIMGConfirmUBIFSWindow(insScreen, fromdir, todir, imgfile,\
-                                      lblksize, lleb, lmeb)
+                                      lblksize, lleb, lmeb, szvid, szvname)
 
         if rcode == "e":
             # exit
@@ -340,7 +378,6 @@ def MKIMGCreateUBIFS(insMKIMGInfo, fdLog):
     MSG_END_SUCCESS  = "\nMaking the UBIFS image succeeded."
     MSG_END_FAILED   = "\nMaking the UBIFS image failed."
     MSG_FINISH       = "RootFS Image Maker finish."
-    ERR_MSG_CREATE_SIZE = "WARNING: The image file size is larger than the specified size !!"
 
     print(MSG_START)
     fdLog.write(MSG_START + "\n")
@@ -350,11 +387,12 @@ def MKIMGCreateUBIFS(insMKIMGInfo, fdLog):
     fromdir = insMKIMGInfo.get_from_dir_path()
     todir   = insMKIMGInfo.get_to_dir_path()
     imgname = insMKIMGInfo.get_image_file_name()
-    imgpath = todir + "/" + imgname
+    imgpath = todir + "/" + "rootfs.ubifs.bin"
 
-    (szblksize, lblksize, szleb, lleb, szmeb, lmeb) = insMKIMGInfo.get_ubifs_param()
+    (szblksize, lblksize, szleb, lleb, szmeb, lmeb, szvid, szvname) = insMKIMGInfo.get_ubifs_param()
 
     # Execute Commands
+    #Make ubifsfs image (flash in uboot)
     cmd = "mkfs.ubifs -m %s -e %s -c %s -r %s %s " % \
              (lblksize, lleb, lmeb, fromdir, imgpath)
     if ExecAndOutLog(cmd, fdLog) != 0:
@@ -362,6 +400,31 @@ def MKIMGCreateUBIFS(insMKIMGInfo, fdLog):
 
     if rcode == True:
         os.chmod(imgpath, 0o644)
+
+    # Make ubifs image (flash in linux)
+    # Calcaulte vol_size
+    Vol_size = os.path.getsize(imgpath) + 1000000
+
+    # Write ubi.ini file
+    f = open("ubi.ini", "w")
+    f.write('[ubi_rfs]\n'
+            'mode=ubi\n'
+            'image=%s\n'
+            'vol_id=%s\n'
+            'vol_size=%d\n'
+            'vol_type=dynamic\n'
+            'vol_name=%s\n'
+            'vol_alignment=1\n'
+            'vol_flags=autoresize\n' %("rootfs.ubifs.bin", szvid, Vol_size, szvname))
+    f.close()
+
+    Eraseblock_size = lleb + lblksize*2
+    cmd = "ubinize -o %s -p %s -m %s -s %s -O %s ubi.ini" % \
+              (imgname, Eraseblock_size, lblksize, lblksize, lblksize)
+    if ExecAndOutLog(cmd, fdLog) != 0:
+        rcode = False
+
+    if rcode == True:
         print(MSG_END_SUCCESS)
         fdLog.write(MSG_END_SUCCESS + "\n")
     else:

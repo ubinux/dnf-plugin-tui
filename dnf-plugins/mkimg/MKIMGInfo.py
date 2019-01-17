@@ -17,8 +17,6 @@ MKIMG_IMG_TYPE_INITRD    = 2
 MKIMG_IMG_TYPE_RAW       = 3
 MKIMG_IMG_TYPE_SQUASHFS  = 4
 MKIMG_IMG_TYPE_UBIFS     = 5
-MKIMG_IMG_TYPE_CRAMFS    = 6
-MKIMG_IMG_TYPE_LOGFS     = 7
 
 MKIMG_LABEL_IMG_SIZE     = 1
 MKIMG_LABEL_PAGE_SIZE    = 2
@@ -31,6 +29,7 @@ MKIMG_LABEL_MEB_SIZE     = 8
 MKIMG_LABEL_COMPRESS     = 9
 MKIMG_LABEL_SEGSHIFT     = 10
 MKIMG_LABEL_WRITESHIFT   = 11
+MKIMG_LABEL_VOL_ID       = 12
 
 MKIMG_BLOCK_SIZE         = 512  # Block size
 
@@ -69,6 +68,21 @@ MKIMG_BLOCK_SIZE         = 512  # Block size
 #      sRAW_Mount_pt    : Path of Mount point (default:/mnt)
 #      iRAW_Filesystem  : Filesystem (0:ext2, 1:ext3, 2:ext4, default:0)
 #
+#   Parameters for Making UBI image
+#      sRAW_Img_size    : Image size (string)
+#      lRAW_Img_size    : Image size (long)
+#      sRAW_Loop_dev    : Path of Loop device (default:/dev/loop0)
+#      sRAW_Mount_pt    : Path of Mount point (default:/mnt)
+#      iRAW_Filesystem  : Filesystem (0:ext2, 1:ext3, 2:ext4, default:0)
+#
+#      sUBIFS_MIN_size  : Page size (string)
+#      sUBIFS_LEB_size  : Logical erase block size (string)
+#      sUBIFS_MEB_size  : Maximum logical erase block count (string)
+#      lUBIFS_MIN_size  : Page size (number)
+#      lUBIFS_LEB_size  : Logical erase block size (number)
+#      lUBIFS_MEB_size  : Maximum logical erase block count (number)
+#      sUBIVOL_ID       : Id of /dev/ubi, for example /dev/ubi0
+#      sUBIVOL_NAME     : Vol Name of /dev/ubi
 #-----------------------------------------------------------------------------
 class MKIMGInfo:
 
@@ -125,6 +139,8 @@ class MKIMGInfo:
         self.lUBIFS_MIN_size = 0
         self.lUBIFS_LEB_size = 0
         self.lUBIFS_MEB_size = 0
+        self.sUBIVOL_ID = "0"
+        self.sUBIVOL_NAME = "rootfs"
 
     #=================================================================
     # SquashFS image
@@ -221,10 +237,12 @@ class MKIMGInfo:
     # Output:
     #   None
     #------------------------------------------------------------------
-    def set_ubifs_param(self, sMin_size, sLEB_size, sMEB_size):
+    def set_ubifs_param(self, sMin_size, sLEB_size, sMEB_size, sVOL_ID, sVOL_NAME):
         self.sUBIFS_MIN_size = sMin_size
         self.sUBIFS_LEB_size = sLEB_size
         self.sUBIFS_MEB_size = sMEB_size
+        self.sUBIVOL_ID = sVOL_ID
+        self.sUBIVOL_NAME = sVOL_NAME
 
     #------------------------------------------------------------------
     # def set_ubifs_long_param()
@@ -259,7 +277,8 @@ class MKIMGInfo:
     def get_ubifs_param(self):
         return (self.sUBIFS_MIN_size, self.lUBIFS_MIN_size, \
                 self.sUBIFS_LEB_size, self.lUBIFS_LEB_size, \
-                self.sUBIFS_MEB_size, self.lUBIFS_MEB_size )
+                self.sUBIFS_MEB_size, self.lUBIFS_MEB_size, \
+                self.sUBIVOL_ID, self.sUBIVOL_NAME)
 
     #------------------------------------------------------------------
     # def check_ubifs_param()
@@ -289,8 +308,12 @@ class MKIMGInfo:
         if err != 0:
             return MKIMG_LABEL_MEB_SIZE
 
-        return 0
+        # Check vol id (Character and Size)
+        err = Check10Chara(self.sUBIVOL_ID)
+        if err != 0:
+            return MKIMG_LABEL_VOL_ID
 
+        return 0
 
     #=================================================================
     # Common Parameters
