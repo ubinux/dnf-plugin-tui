@@ -673,7 +673,7 @@ def PKGINSTActionWindow(insScreen, lstSubject, iPosition, title="Select your ope
 #    insPKGINSTXmlinfo : xml information
 #    insPKGINSTPkginfo : package information
 #    iType             : select type (first -1)
-#    group_hotkey      : group_hotkey
+#    group_hotkey      : group info exists
 #    title             : title of grid
 # Output:
 #    int  : select type
@@ -715,10 +715,12 @@ def PKGCUSActionWindowCtrl(insScreen, lstSubject, iType, group_hotkey=False, tit
                     insScreen = None
                 sys.exit(0)
       
-        if group_hotkey == True:
-            if hkey == "g":
+        if hkey == "g":
+            if group_hotkey == True:
                 # groupinfo switch
                 return (hkey, type)
+            else:
+                AttentionWindow(insScreen, "No group infomation")
 
 
 # ------------------------------------------------------------
@@ -732,8 +734,8 @@ def PKGCUSActionWindowCtrl(insScreen, lstSubject, iType, group_hotkey=False, tit
 #      [ str ]
 #        str : subject of each install type
 #   iPosition  : current entry position
-#   group_hotkey  : show group_hotkey
-#   title             : title of grid
+#   group_hotkey  : show group_hotkey or not
+#   title         : title of grid
 # Output:
 #   str   : pressed hotkey "ENTER", " ", "i", or "x"
 #   int   : position
@@ -784,7 +786,7 @@ def PKGCUSActionWindow(insScreen, lstSubject, iPosition, group_hotkey=False, tit
                  "F9": "x", \
                  "F4": "b"}
 
-    #If group exists, add group_hotkey
+    # Do install action, add group_hotkey
     if group_hotkey == True:
         myhotkeys["F6"] = "g"
 
@@ -982,7 +984,7 @@ def _make_grid_input_path(insScreen, title, label, strText):
 
     return e, b, g
 
-def SampleMissWindow(insScreen, error_str):
+def AttentionWindow(insScreen, error_str):
     buttons = ['  OK  ']
     (w, h) = GetButtonMainSize(insScreen)
     rr = ButtonInfoWindow(insScreen, "  Error !  ", error_str, w, h, buttons)
@@ -1312,7 +1314,6 @@ def PKGINSTPackageWindow(insScreen, packages, selected_packages, iPosition, lTar
     g.add(t2, 0, 2, (0, 0, 0, 0))
     #g.add(t3, 0, 3, (-1, 0, -1, 0))
     #g.add(t4, 0, 4, (0, 0, 0, -1))
-
 
 
 

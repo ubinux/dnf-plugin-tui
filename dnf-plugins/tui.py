@@ -123,7 +123,7 @@ class TuiCommand(commands.Command):
         self.reponame = None
         self.CONFIG_FILE = ".config"
         self.grps = []
-        self.group_flag = False #Show hotkey 'F6' or not
+        self.group_flag = False #Has group info or not
         self.group_botton = False #Press hotkey 'F6' or not
         self.SAVE = True
 
@@ -397,7 +397,7 @@ class TuiCommand(commands.Command):
                     self.base.read_comps(arch_filter=True)
                     self.grps = self.base.comps.groups
                     if self.grps:
-                        self.group_flag = True #Show hotkey F6
+                        self.group_flag = True # Has group info
                         self.group_botton = False #hotkey F6 hasn't been pressed
 
                     if result == "b":
@@ -469,6 +469,7 @@ class TuiCommand(commands.Command):
                         group = (grp.ui_name, grp.ui_description, grp.mandatory_packages)
                         group_list.append(group)
                     
+                    # Show group list
                     (result, group_id) = PKGCUSActionWindowCtrl(self.screen, group_list, self.install_type, True)
 
                     if result == "b":
@@ -477,11 +478,12 @@ class TuiCommand(commands.Command):
                         continue
 
                     elif result == "g":
-                        #group
+                        # Back to non-group
                         self.group_botton = False
                         stage = STAGE_PACKAGE
                         continue
 
+                    # Enter in group
                     else:
                         pkg_group = group_list[group_id][2]
                         stage = STAGE_PACKAGE
@@ -491,19 +493,21 @@ class TuiCommand(commands.Command):
                 # select package
                 #==============================
                 elif stage == STAGE_PACKAGE:
-                    if self.group_flag == True and self.install_type == ACTION_INSTALL:
-                    # Show hotkey F6
+                    if self.install_type == ACTION_INSTALL:
+                        # Show hotkey F6 in package selection interface
                         if self.group_botton == False:
                             (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
-                                                                                None, selected_pkgs, custom_type, pkg_group=[], group_hotkey=True )
+                                                                                None, selected_pkgs, custom_type, pkg_group=[], group_hotkey=True)
 
                         else:
-                            # Show group interface
+                            # Enter group interface
                             (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
-                                                                                None, selected_pkgs, custom_type, pkg_group)
+                                                                                None, selected_pkgs, custom_type, pkg_group, group_hotkey=False)
+
                     else:
                         (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
                                                                                 None, selected_pkgs, custom_type)
+
 
                     if result == "b":
                         # back
@@ -519,7 +523,7 @@ class TuiCommand(commands.Command):
 
                     if result == "g":
                         if self.group_flag == True and self.install_type == ACTION_INSTALL:
-                            #group
+                            # Switch between group and simple
                             self.group_botton = True
                             stage = STAGE_GROUP
                             continue
@@ -738,7 +742,7 @@ class TuiCommand(commands.Command):
                 Type_status = True
 
         if Type_status:
-            #Don't show doc and dbg packages
+            #Don't show dev, doc, dbg, staticdevdoc and ptest packages
             strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
             for pkg in packages:
                 if "-locale-" in pkg.name and not pkgType_dic["locale"]:
@@ -808,9 +812,11 @@ class TuiCommand(commands.Command):
                         display_pkgs.remove(pkg)
             packages = copy.copy(display_pkgs) #backup all pkgs
 
+        # In special type pkg select interface (round2)
         if pkgTypeList != None:
             display_pkgs = self.PkgType_filter(display_pkgs, packages, pkgTypeList)
 
+            # In package select interface, only display installed packages
             actions = (ACTION_REMOVE, ACTION_UPGRADE, ACTION_GET_PKG, ACTION_GET_SOURCE, ACTION_GET_SPDX, ACTION_GET_ALL)
             if self.install_type in actions:
                 for pkg in packages:
@@ -818,13 +824,15 @@ class TuiCommand(commands.Command):
                         if pkg in display_pkgs:
                             display_pkgs.remove(pkg)
 
+            # If there has upgradeable package, show attention window
             elif self.install_type == ACTION_INSTALL:
                 if(self._DeleteUpgrade(packages,display_pkgs)):
                     hkey = HotkeyAttentionWindow(self.screen, ATTENTON_HAVE_UPGRADE)
 
+            # No special type pkg selected
             if len(display_pkgs) == 0:
                 if not self.no_gpl3:
-                    if self.install_type == ACTION_INSTALL     :
+                    if self.install_type == ACTION_INSTALL:
                         confirm_type = CONFIRM_INSTALL
                         hkey = HotkeyExitWindow(self.screen, confirm_type)
                         if custom_type >= RECORD_INSTALL:
@@ -840,7 +848,7 @@ class TuiCommand(commands.Command):
                 else:
                     return ("n", selected_pkgs, packages)
         else:
-            #filter the type pkg such as -dev (Round1)
+            # Filter the type pkg such as -dev (Round1)
             if self.install_type == ACTION_INSTALL:
                 strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
                 for pkg in packages:
@@ -858,6 +866,7 @@ class TuiCommand(commands.Command):
                     hkey = HotkeyAttentionWindow(self.screen, ATTENTON_HAVE_UPGRADE)
 
                 if self.group_flag == True and self.group_botton == True:
+                    # Add package into grouplist
                     groupinfo = []
                     for pkg in pkg_group:
                        groupinfo.append(pkg.name)
@@ -893,6 +902,7 @@ class TuiCommand(commands.Command):
                 hkey = HotkeyAttentionWindow(self.screen, ATTENTON_NONE)
                 return ("b", selected_pkgs, packages)
 
+        # Load package file or sample
         if custom_type >= RECORD_INSTALL:
             selected_pkgs = []
             selected_pkgs = self.Read_ConfigFile(display_pkgs, selected_pkgs)
@@ -918,6 +928,10 @@ class TuiCommand(commands.Command):
                                                              search, \
                                                              self.install_type, group_hotkey)
 
+                # If there is no groupinfo, show warning
+                if hkey == 'g':
+                    if self.group_flag == False:
+                        AttentionWindow(self.screen, "No group infomation!")
                 stage = hotkey_switch.get(hkey, None)
 
             elif stage == STAGE_NEXT:
