@@ -33,6 +33,7 @@ Make sure you have prepared the following:
   - If you want to make filesystem image, ensure following tools are exist on your host:
     1. mtd-utils(Ubuntu), e2fsprogs (Fedora)
     2. squashfs-tools
+  - Do not run two process of dnf in one directory in the same time, as some temp file maybe covered.
 
 #### (1) toolchain
 &emsp;&emsp;Install the cross-development toolchain(e.g. for i586: poky-glibc-x86_64-meta-toolchain-i586-toolchain-2.6.sh) and set up environment of toolchain.
@@ -670,6 +671,8 @@ file system or Reference2 to install systemd based root file system.
         │   Minimum I/O unit size             : 4k_____________bytes │
         │   Logical erase block size( > 15360): 248k___________bytes │
         │   Maximum logical erase block count : 2048___________count │
+        │   Id of UBIFS device :                0______________      │
+        │   Name of UBIFS Volume :              rootfs_________      │
         │                                                            │
         │                     ┌────┐   ┌──────┐                      │
         │                     │ OK │   │ Back │                      │
