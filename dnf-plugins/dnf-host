@@ -1,0 +1,526 @@
+#!/bin/bash
+
+#DEFAULT_TARGET_ ROOTFS=""
+WORKDIR=`pwd`
+DEFAULT_REPO_DIR=$WORKDIR/oe_repo
+HIDDEN_ROOTFS_DIR=$WORKDIR/.rootfs-${ARCH}
+DEFAULT_ROOTFS_DIR=/opt/ubq/devkit/$ARCH
+DEFAULT_SPDX_REPO_DIR=file://$WORKDIR/spdx_repo
+DEFAULT_SPDX_DESTINATION_DIR=$WORKDIR/spdx_download
+DEFAULT_SRPM_REPO_DIR=file://$WORKDIR/srpm_repo
+DEFAULT_SRPM_DESTINATION_DIR=$WORKDIR/srpm_download
+DEFAULT_RPM_REPO_DIR=file://$WORKDIR/oe_repo
+DEFAULT_RPM_DESTINATION_DIR=$WORKDIR/rpm_download
+TAR="false"
+
+usage () {
+    if [ ! -f $WORKDIR/.env-dnf ]; then
+        echo "Init the environment failed, please init again"
+        exit 0
+    else
+        source $WORKDIR/.env-dnf
+        echo "dnf-host is only used on host to manage packages for target."
+        echo ""
+        echo "1. If you want to create a new rootfs, you must init your environment first."
+        echo "   \$ dnf-host init "
+        echo ""
+        echo "2. If you want to manage your rootfs that has already create by dnf-host."
+        echo "   \$ dnf-host [options] COMMAND "
+        echo "   In this case, the usage is as same as dnf:"
+        echo ""
+        echo "======== Advanced OPTIONS ========"
+        echo "  -Y         Automatic yes to all prompts"
+        echo "  -D         use set -x to see what is going on"
+        echo ""
+
+        dnf -y -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ help --releasever=None
+    fi
+    exit
+}
+
+ensure_confirm() {
+   read USER_ANSWER
+   if [ ! -n "$USER_ANSWER" ];then
+       USER_ANSWER="Y"
+   fi
+   case $USER_ANSWER in
+   N|n)
+       ;;
+   Y|y)
+       return 1
+       ;;
+   *)
+       echo "Init aborted!"
+       exit 1
+       ;;
+   esac
+}
+
+set_dir() {
+        if [ "$answer" = "Y" ]; then
+            USER_DEFINE=$1
+            echo "Set $2 directory to \"${USER_DEFINE#*//}\"."
+        else
+            echo "================================================================="
+            while true; do
+                read -p "Enter $2 directory (default: ${1#*//}): " USER_DEFINE
+                [ "$USER_DEFINE" = "" ] && USER_DEFINE=$1
+                echo "You are about to set $2 directory to \"${USER_DEFINE#*//}\". Are you sure[Y/n]?"
+                ensure_confirm
+                if [ $? = 1 ]; then
+                    break
+                fi
+            done
+        fi
+}
+
+export_env () {
+    echo "TARGET_ROOTFS=$DEFINE_ROOTFS_DIR" > $WORKDIR/.env-dnf
+    echo "HIDDEN_ROOTFS=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "REPO_DIR=$DEFINE_REPO_DIR" >> $WORKDIR/.env-dnf
+    echo "SPDX_REPO_DIR=$DEFINE_SPDX_REPO_DIR" >> $WORKDIR/.env-dnf
+    echo "SPDX_DESTINATION_DIR=$DEFINE_SPDX_DESTINATION_DIR" >> $WORKDIR/.env-dnf
+    echo "SRPM_REPO_DIR=$DEFINE_SRPM_REPO_DIR" >> $WORKDIR/.env-dnf
+    echo "SRPM_DESTINATION_DIR=$DEFINE_SRPM_DESTINATION_DIR" >> $WORKDIR/.env-dnf
+    echo "RPM_REPO_DIR=$DEFINE_RPM_REPO_DIR" >> $WORKDIR/.env-dnf
+    echo "RPM_DESTINATION_DIR=$DEFINE_RPM_DESTINATION_DIR" >> $WORKDIR/.env-dnf
+    echo "LD_LIBRARY_PATH=$OECORE_NATIVE_SYSROOT/usr/bin/../lib/pseudo/lib:$OECORE_NATIVE_SYSROOT/usr/bin/../lib/pseudo/lib64" >> $WORKDIR/.env-dnf
+    echo "LD_PRELOAD=libpseudo.so" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_PASSWD=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf 
+    echo "PSEUDO_OPTS=" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_LIBDIR=$OECORE_NATIVE_SYSROOT/usr/bin/../lib/pseudo/lib64" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_NOSYMLINKEXP=1" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_DISABLED=0" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_PREFIX=$OECORE_NATIVE_SYSROOT/usr" >> $WORKDIR/.env-dnf
+    echo "PSEUDO_LOCALSTATEDIR=$WORKDIR/pseudo/" >> $WORKDIR/.env-dnf
+    echo "D=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "OFFLINE_ROOT=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "IPKG_OFFLINE_ROOT=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "OPKG_OFFLINE_ROOT=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "INTERCEPT_DIR=$WORKDIR/intercept_scripts" >> $WORKDIR/.env-dnf
+    echo "NATIVE_ROOT=$OECORE_NATIVE_SYSROOT" >> $WORKDIR/.env-dnf
+    echo "RPM_ETCCONFIGDIR=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+}
+
+check_para () {
+#Check the parameters
+if [ ! -d $HIDDEN_ROOTFS_DIR ]; then
+    echo " $HIDDEN_ROOTFS_DIR is not exist. mkdir $HIDDEN_ROOTFS_DIR. "
+    mkdir -p $HIDDEN_ROOTFS_DIR
+fi
+}
+
+#create repodata for rpm packages.
+create_repo () {
+    if [ ${DEFINE_REPO_DIR:0:4} = "http" ];then
+        echo "This is a remote repo!"
+    else
+        if [ ! -d $DEFINE_REPO_DIR ]; then
+            echo "Error! $DEFINE_REPO_DIR is not exist. Please Check your rpm repo! "
+            exit 0
+        fi
+        echo "Creating repo ..."
+        if [ -f $DEFINE_REPO_DIR/comps.xml ]; then
+            createrepo_c.real --update -q -g comps.xml $DEFINE_REPO_DIR
+        else
+            createrepo_c.real --update -q $DEFINE_REPO_DIR
+        fi
+    fi
+}
+
+travFolder () { 
+    cd $1
+    for f in `ls`
+    do
+        if [ "$f" = "repodata" ];then
+           continue 
+        fi
+        if test -d $f;then
+            travFolder $f
+        else
+            if [ "${f##*.}"x = "rpm"x ];then
+                rate=$(echo "scale=2;$i/$all_pkg"|bc)
+                percent=$(echo "$rate*100"|bc)
+                #percent=${percent%.*} #transform float to integer
+                num=$(echo "$rate*50+1"|bc)
+                bar="`seq -s '#' $num | sed 's/[0-9]//g'`"
+                printf "progress:[%-50s]%.0f%%\r" "$bar" "$percent"
+                let i=i+1
+                
+                line=`echo "$f" | sed -r 's/.*\.(.*)\.rpm/\1/'`
+                if [ "$line" != "all" ] && [ "$line" != "any" ] && [ "$line" != "noarch" ] && [ "$line" != "${ARCH}" ] && [ "$line" != "${MACHINE_ARCH}" ]; then
+                    grep -w "$line" $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch > /dev/null
+                    if [ $? -ne 0 ]; then
+                        echo -n "$line:" >> $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
+                        echo -n " $line" >> $HIDDEN_ROOTFS_DIR/etc/rpmrc
+                    fi
+                fi
+            fi
+            continue
+        fi
+    done
+    cd - >/dev/null
+}
+
+config_dnf () {
+    #necessary dnf config
+    if [ ! -d $HIDDEN_ROOTFS_DIR/etc/dnf ]; then
+        mkdir -p $HIDDEN_ROOTFS_DIR/etc/dnf
+        touch $HIDDEN_ROOTFS_DIR/etc/dnf/dnf-host.conf
+    fi
+    
+    #clean the original content in dnf.conf file
+    #Add config_path in dnf.conf file
+
+cat > $HIDDEN_ROOTFS_DIR/etc/dnf/dnf-host.conf <<EOF
+[main]
+spdx_repodir=$DEFINE_SPDX_REPO_DIR
+spdx_download=$DEFINE_SPDX_DESTINATION_DIR
+srpm_repodir=$DEFINE_SRPM_REPO_DIR
+srpm_download=$DEFINE_SRPM_DESTINATION_DIR
+rpm_repodir=$DEFINE_RPM_REPO_DIR
+rpm_download=$DEFINE_RPM_DESTINATION_DIR
+
+installroot=$HIDDEN_ROOTFS_DIR
+logdir=$WORKDIR
+releasever=None
+EOF
+    
+    #Config local repo for cross environment
+    mkdir -p $HIDDEN_ROOTFS_DIR/etc/yum.repos.d
+
+cat > $HIDDEN_ROOTFS_DIR/etc/yum.repos.d/oe.repo  <<EOF
+[base]
+name=oe_repo
+baseurl=file://$DEFINE_REPO_DIR
+enabled=1
+gpgcheck=0 
+EOF
+
+    if [ ! -d $HIDDEN_ROOTFS_DIR/etc/dnf/vars ]; then
+        mkdir -p $HIDDEN_ROOTFS_DIR/etc/dnf/vars
+        echo -n "${MACHINE_ARCH}:${ARCH}:" >> $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
+    fi
+
+    #necessary rpm config
+    if [ ! -d $HIDDEN_ROOTFS_DIR/etc/rpm ] || [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpm/platform ]; then
+        mkdir -p $HIDDEN_ROOTFS_DIR/etc/rpm
+        echo "${MACHINE_ARCH}-pc-linux" > $HIDDEN_ROOTFS_DIR/etc/rpm/platform
+    fi
+
+    if [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpmrc ]; then
+        echo -n "arch_compat: ${MACHINE_ARCH}: all any noarch ${ARCH} ${MACHINE_ARCH}" > $HIDDEN_ROOTFS_DIR/etc/rpmrc
+    fi
+
+    if [ ${DEFINE_REPO_DIR:0:4} = "http" ];then
+
+cat > $HIDDEN_ROOTFS_DIR/etc/yum.repos.d/oe.repo  <<EOF
+[base]
+name=oe_repo
+baseurl=$DEFINE_REPO_DIR
+enabled=1
+gpgcheck=0 
+EOF
+    else
+        echo "Scanning repo ..."
+        all_pkg=`ls -lR $DEFINE_REPO_DIR | grep "^-" |grep rpm$ |wc -l`
+        i=1
+        travFolder $DEFINE_REPO_DIR
+        echo -e "\nScanning finish"
+        sed -i "s/:$/\n/g" $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
+        sed -i "s/:$//g" $HIDDEN_ROOTFS_DIR/etc/rpmrc
+    fi
+}
+
+dnf-init() {
+    if [ -f .env-dnf ];then
+        rm .env-dnf
+    fi
+    if [ -d $HIDDEN_ROOTFS_DIR ];then
+        echo "Deleting temp rootfs......"
+        rm -rf $HIDDEN_ROOTFS_DIR
+    fi
+    
+    #get repo directory
+    set_dir $DEFAULT_REPO_DIR "repo"
+    DEFINE_REPO_DIR=$USER_DEFINE
+    
+    #get rootfs destination directory
+    set_dir $DEFAULT_ROOTFS_DIR "rootfs destination"
+    DEFINE_ROOTFS_DIR=$USER_DEFINE
+    
+    #get SPDX repo directory
+    set_dir $DEFAULT_SPDX_REPO_DIR "SPDX repo"
+    DEFINE_SPDX_REPO_DIR=$USER_DEFINE
+
+    #Add 'file://' for SPDX_REPO_DIR
+    if [ ${DEFINE_SPDX_REPO_DIR:0:4} != "file" ];then
+        DEFINE_SPDX_REPO_DIR=file://${DEFINE_SPDX_REPO_DIR}
+    fi
+
+    #get SPDX file destination directory
+    set_dir $DEFAULT_SPDX_DESTINATION_DIR "SPDX file destination"
+    DEFINE_SPDX_DESTINATION_DIR=$USER_DEFINE
+
+    if [ ! -d $DEFINE_SPDX_DESTINATION_DIR ];then
+        echo "Create the SPDX file destination directory automatically"
+        mkdir -p $DEFINE_SPDX_DESTINATION_DIR
+    fi
+    
+    #get SRPM repo directory    
+    set_dir $DEFAULT_SRPM_REPO_DIR "SRPM repo"
+    DEFINE_SRPM_REPO_DIR=$USER_DEFINE
+
+    #Add 'file://' for SRPM_REPO_DIR
+    if [ ${DEFINE_SRPM_REPO_DIR:0:4} != "file" ];then
+        DEFINE_SRPM_REPO_DIR=file://${DEFINE_SRPM_REPO_DIR}
+    fi
+
+    #get SRPM file destination directory
+    set_dir $DEFAULT_SRPM_DESTINATION_DIR "SRPM file destination"
+    DEFINE_SRPM_DESTINATION_DIR=$USER_DEFINE
+
+    if [ ! -d $DEFINE_SRPM_DESTINATION_DIR ];then
+        echo "Create the SRPM file destination directory automatically"
+        mkdir -p $DEFINE_SRPM_DESTINATION_DIR
+    fi
+
+    #get RPM repo directory    
+    set_dir $DEFAULT_RPM_REPO_DIR "RPM repo"
+    DEFINE_RPM_REPO_DIR=$USER_DEFINE
+
+    #Add 'file://' for RPM_REPO_DIR
+    if [ ${DEFINE_RPM_REPO_DIR:0:4} != "file" ];then
+        DEFINE_RPM_REPO_DIR=file://${DEFINE_RPM_REPO_DIR}
+    fi
+
+    #get RPM file destination directory
+    set_dir $DEFAULT_RPM_DESTINATION_DIR "RPM file destination"
+    DEFINE_RPM_DESTINATION_DIR=$USER_DEFINE
+
+    if [ ! -d $DEFINE_RPM_DESTINATION_DIR ];then
+        echo "Create the RPM file destination directory automatically"
+        mkdir -p $DEFINE_RPM_DESTINATION_DIR
+    fi
+
+    #Delete the prefix "file://" in REPO_DIR
+    if [ ${DEFINE_REPO_DIR:0:4} = "file" ];then
+        DEFINE_REPO_DIR=${DEFINE_REPO_DIR#*//}
+    fi
+
+    #Start from here
+    export_env
+    check_para
+    create_repo
+    config_dnf
+}
+
+dnf-show() {
+    if [ ! -f $WORKDIR/.env-dnf ]; then
+        echo "Init the environment failed, please init again"
+        exit 0
+    else
+        source $WORKDIR/.env-dnf
+        echo "repo directory : ${REPO_DIR}"
+        echo "rootfs destination directory : ${TARGET_ROOTFS}"
+        echo "SPDX repo directory : ${SPDX_REPO_DIR}"
+        echo "SPDX destination directory : ${SPDX_DESTINATION_DIR}"
+        echo "SRPM repo directory : ${SRPM_REPO_DIR}"
+        echo "SRPM destination directory : ${SRPM_DESTINATION_DIR}"
+    fi
+}
+
+print_progess() {
+    let bar_num=$1
+    bar="`seq -s '#' $bar_num | sed 's/[0-9]//g'`"
+    printf "\rprogress:[%-50s]%.0f%%" "$bar" "$2"
+}
+
+#compress_or_decompress rootfs
+#parameter
+#$1 is tar file name
+#$2 is tared directory
+compress_or_decompress() {
+    total_files=$( ls . -lR | grep rw | wc -l ) #num of all files in rootfs
+
+    #used to accpet the output of tar
+    tmpfifo=/tmp/tmpfifo
+    if [  -f $tmpfifo ];then
+    :
+    else
+        mkfifo $tmpfifo &> /dev/null
+    fi
+    (
+    current_file_num=0
+    compressed_file_num=0
+    progress_num=0
+    print_progess 0 0
+    while read line
+    do
+        current_file_num=$(echo $line | wc -l )
+        let compressed_file_num=${compressed_file_num}+${current_file_num}
+        rate=$(echo "scale=2;$compressed_file_num/$total_files"|bc)
+        percent=$(echo "$rate*100"|bc)  #Already completed percent
+        num=$(echo "$rate*50+1"|bc)     #progress bar num
+        progress_num=${num%.*}          #transform float to integer
+        sleep 0.01
+        print_progess $progress_num $percent
+        if [ ${compressed_file_num} -ge ${total_files} ]; then
+            print_progess 51 100
+            rm -rf $tmpfifo
+            break
+        fi
+    done<$tmpfifo
+    echo
+    ) &
+    child_PID=$!
+    #call tar execution
+    if [ $2 == "-C" ];then
+        sudo tar xjvvf "$@" >$tmpfifo 2>/dev/null
+    else  
+        sudo tar cjvf "$@" >$tmpfifo 2>/dev/null
+    fi
+    wait ${child_PID}
+    return ${total_files}
+}
+
+# 1. Compress the rootfs to tarball
+# 2. Decompress tarball to rootfs destination
+Put_rootfs_to_destination(){
+    cd ${HIDDEN_ROOTFS}
+    echo "Prepare rootfs"
+    unset LD_PRELOAD
+    compress_or_decompress ../${ROOTFS_TAR} ./*
+    # Check whether the tar ball has been produced
+    if [ ! -f ../${ROOTFS_TAR} ];then
+        echo "No file named ${ROOTFS_TAR}"
+        exit 1
+    fi
+    sudo mkdir -p ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}
+    echo "Put rootfs to destination"
+    compress_or_decompress ../${ROOTFS_TAR} -C ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date} --numeric-owner
+    sudo rm ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}/etc/dnf/dnf-host.conf
+    sudo rm ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}/etc/yum.repos.d/oe.repo
+
+    # Ask user whether they need to keep the tar file of rootfs
+    echo "Do you like to keep the tarball of rootfs.[Y/n]?"
+    read USER_ANSWER
+    if [ ! -n "$USER_ANSWER" ];then
+        USER_ANSWER="Y"
+    fi
+    case $USER_ANSWER in
+    N|n)
+        rm -f ../${ROOTFS_TAR}
+        ;;
+    Y|y)
+        echo "The tarball is ${WORKDIR}/${ROOTFS_TAR}"
+        ;;
+    *)
+        echo "The tarball is ${WORKDIR}/${ROOTFS_TAR}"
+        ;;
+    esac
+
+    if [ ! -d ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date} ]; then
+        echo "The operation has been interrupted"
+        exit 1
+    fi
+    echo "Target dir is ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}"
+}
+
+Install_pkg_from_listfile(){
+      #Check if package list file is exist
+      if [ -f $INSTALL_LIST ]; then
+          PKG_LIST=`cat $INSTALL_LIST`
+          check_results=`dnf -y -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* install $PKG_LIST --releasever=None`
+
+          #If no packages are installed, exit
+          if echo "$check_results" | grep "Nothing to do."; then
+              echo "All packages are already installed"
+              exit 0
+          fi
+
+          if $FETCH_ALL; then
+              dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --installroot=${HIDDEN_ROOTFS} fetchall $PKG_LIST
+          fi
+      else
+          echo "$INSTALL_LIST: No such file, please check your input!"
+          exit 0
+      fi
+}
+
+dnf-call() {
+    if [ ! -f $WORKDIR/.env-dnf ]; then
+        echo "Init the environment failed, please init again"
+        exit 0
+    else
+        source $WORKDIR/.env-dnf
+
+        #install from package list file
+        if [ -n "$INSTALL_LIST" ]; then
+            Install_pkg_from_listfile
+        fi
+
+        Date=`date +%Y%m%d%H%M`
+        RELEASE=`echo $STRIP |awk -F '-' '{print $2}'`
+        ROOTFS_TAR=rootfs-${RELEASE}-${Date}.tar.bz2
+
+        #When you choose tui, the rootfs will be made only after pkg operation
+        if [ $TAR = "true" ]; then
+            Put_rootfs_to_destination
+        fi
+    fi
+}
+
+#Main function start from here
+#if args is none, show usage
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+ARGS_ORG=$*
+ARGS_ORG=`echo $ARGS_ORG | sed 's/-D//' | sed 's/-Y//'| sed 's/--rootfs-tar//'| sed 's/--install_list//'`
+
+ARGS=`getopt -q -a -o hDY -l install_list:,help,rootfs-tar -- "$@"`
+
+eval set -- "${ARGS}"
+while true
+do
+        case "$1" in
+        -h|--help)
+                usage
+                shift
+                ;;
+        --rootfs-tar)
+                TAR="true"
+                shift
+                ;;
+        --install_list)
+                INSTALL_LIST=$2
+                shift 2
+                ;;
+        --fetch-all)
+                FETCH_ALL="true"
+                ;;
+        -D)
+                set -x
+                shift
+                ;;
+        -Y)
+                answer="Y"
+                shift
+                ;;
+        --)
+                shift
+                break
+                ;;
+        esac
+done
+
+#Deal residual args 
+if [ "$1"x = "init"x -a $# = 1 ]; then
+    dnf-init
+elif [ "$1"x = "show"x ]; then
+    dnf-show
+else
+    dnf-call $ARGS_ORG
+fi

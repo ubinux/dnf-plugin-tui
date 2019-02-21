@@ -1,0 +1,7 @@
+base-passwd
+base-files
+busybox
+busybox-mdev
+busybox-syslog
+busybox-udhcpc
+busybox-udhcpd
