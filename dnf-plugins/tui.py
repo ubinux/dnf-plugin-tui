@@ -135,14 +135,19 @@ class TuiCommand(commands.Command):
         parser.add_argument("--call", dest="with_call",
                           action="store_true", default=None,
                           help=_(""))
-        parser.add_argument("--auto", action="store_true", dest="auto",
-                                 default=None, help=_("Automatically complete installation"))
-        parser.add_argument("-i", "--installlist", dest="install_list",
-                          help=_("Package list file for installation"))
+        parser.add_argument("-i", "--pkg_list", dest="pkg_list",
+                          help=_("Package list file"))
+        # The value of dest can't be 'command' as value self.opts.command is already be used.
+        parser.add_argument("--command", nargs='*', action="store", dest="command_args",
+                                 default=None, help=_("Execute dnf command line"))
+        parser.add_argument("--mkrootfs", action="store_true", dest="mkrootfs",
+                                 default=None, help=_("Put rootfs to directory as user defines"))
+        parser.add_argument("--nosave", action="store_true", dest="nosave",
+                                 default=None, help=_("Don't save Package list file"))
 
     def pre_configure(self):
+        plugin_dir = os.path.split(__file__)[0] #the dir of dnf-host script
         if self.opts.with_init:
-            plugin_dir = os.path.split(__file__)[0] #the dir of dnf-host script
             os.system("%s/dnf-host init" %plugin_dir)
             sys.exit(0)
         if self.opts.with_call:
@@ -151,6 +156,7 @@ class TuiCommand(commands.Command):
             #Reload the conf and args
             env_path = os.getcwd() + "/.env-dnf"
             if os.path.exists(env_path):
+                # Before using dnf in cross-environment, source env path first
                 read_environ(env_path)
 
                 install_root_from_env = os.environ['HIDDEN_ROOTFS']
@@ -158,13 +164,33 @@ class TuiCommand(commands.Command):
                 self.opts.config_file_path = install_root_from_env + "/etc/dnf/dnf-host.conf"
                 self.opts.logdir = os.path.dirname(install_root_from_env)
 
-                if self.opts.auto:
-                    plugin_dir = os.path.split(__file__)[0]
+                #Execute dnf command line
+                if isinstance(self.opts.command_args,list):
                     os.environ["LD_PRELOAD"] = ''
-                    os.system("%s/dnf-host --rootfs-tar --fetch-all --install_list %s" %(plugin_dir, self.opts.install_list))
+                    base_cmd = "%s/dnf-host" % (plugin_dir)
+                    if len(self.opts.command_args) > 0:
+                        cmd = base_cmd + " %s" % (' '.join(self.opts.command_args))
+                    #If args number of '--command' is 0, skip it.
+                    elif not self.opts.mkrootfs:
+                        logger.warning("Command line error: argument --command: expected at least one argument")
+                        sys.exit(0)
+
+                    #Append "--pkg_list"
+                    if self.opts.pkg_list:
+                        cmd = cmd + " --pkg_list %s" % (self.opts.pkg_list)
+
+                    #Append "--mkrootfs"
+                    if self.opts.mkrootfs:
+                        cmd = cmd + " --mkrootfs"
+
+                    #Append "--nosave"
+                    if self.opts.nosave:
+                        cmd = cmd + " --nosave"
+
+                    os.system(cmd)
                     sys.exit(0)
-                 
-                #call subprocess dnf
+
+                #Call subprocess dnf tui
                 tar = False
                 old_md5 = None
 
@@ -192,7 +218,7 @@ class TuiCommand(commands.Command):
                 if tar: 
                     plugin_dir = os.path.split(__file__)[0]
                     os.environ["LD_PRELOAD"] = ''
-                    os.system("%s/dnf-host --rootfs-tar" %plugin_dir)
+                    os.system("%s/dnf-host --mkrootfs" %plugin_dir)
                 sys.exit(0)
             
             else:
@@ -324,7 +350,7 @@ class TuiCommand(commands.Command):
         STAGE_IMAGE_TYPE = 11
 
         custom_type = NEW_INSTALL
-        #----dnf part-------
+        #----returnPkgLists function of dnf------
         try:
             ypl = self.base.returnPkgLists(
                 self.pkgnarrow, self.patterns, self.installed_available, self.reponame)
@@ -875,7 +901,7 @@ class TuiCommand(commands.Command):
                        if pkg.name in groupinfo:
                            display_pkgs.append(pkg)
 
-            #Except install
+            #Except install, e.g. remove,spdx,srpm
             else:
                 for pkg in packages:
                     if pkg not in ypl.installed:
@@ -884,13 +910,17 @@ class TuiCommand(commands.Command):
                 display_pkgs = sorted(display_pkgs)
 
             if self.install_type == ACTION_UPGRADE:
-                q = self.base.sack.query()
-                upgrade_set = q.upgrades()
-              
+                # List the updated available packages
+                try:
+                    ypl = self.base.returnPkgLists(
+                        'upgrades', self.patterns, self.installed_available, self.reponame)
+                except dnf.exceptions.Error as e:
+                    return 1, [str(e)]
+
                 display_pkgs = []
-                for pkg in upgrade_set:
-                    display_pkgs.append(pkg)
-                display_pkgs = sorted(display_pkgs)
+                if ypl.updates:
+                    for pkg in sorted(ypl.updates):
+                        display_pkgs.append(pkg)
 
         if len(display_pkgs)==0:
             if self.install_type==ACTION_INSTALL:

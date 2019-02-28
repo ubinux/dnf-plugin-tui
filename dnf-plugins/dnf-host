@@ -12,6 +12,9 @@ DEFAULT_SRPM_DESTINATION_DIR=$WORKDIR/srpm_download
 DEFAULT_RPM_REPO_DIR=file://$WORKDIR/oe_repo
 DEFAULT_RPM_DESTINATION_DIR=$WORKDIR/rpm_download
 TAR="false"
+FETCH_ALL="false"
+DEFAULT_PKG_LIST_FILE=".config"
+SAVE_PKG_LIST="true"
 
 usage () {
     if [ ! -f $WORKDIR/.env-dnf ]; then
@@ -431,25 +434,35 @@ Put_rootfs_to_destination(){
     echo "Target dir is ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}"
 }
 
-Install_pkg_from_listfile(){
-      #Check if package list file is exist
-      if [ -f $INSTALL_LIST ]; then
-          PKG_LIST=`cat $INSTALL_LIST`
-          check_results=`dnf -y -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* install $PKG_LIST --releasever=None`
+Operation_from_pkg_listfile(){
+    #Check if package list file is exist
+    if [ -f $PKG_LIST ]; then
+        PKG_LIST=`cat $PKG_LIST`
+        check_results=$(dnf -y -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* $PKG_LIST --releasever=None)
 
-          #If no packages are installed, exit
-          if echo "$check_results" | grep "Nothing to do."; then
-              echo "All packages are already installed"
-              exit 0
-          fi
+        #If no packages to be installed, exit
+        if echo "$check_results" | grep -E "Nothing to do.|Error:"; then
+            echo "No package to $1"
+            exit 0
+        else
+            echo "$1 has been complete!"
+        fi
 
-          if $FETCH_ALL; then
-              dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --installroot=${HIDDEN_ROOTFS} fetchall $PKG_LIST
-          fi
-      else
-          echo "$INSTALL_LIST: No such file, please check your input!"
-          exit 0
-      fi
+        if [ $FETCH_ALL = "true" ]; then
+            dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --installroot=${HIDDEN_ROOTFS} fetchall $PKG_LIST
+        fi
+    else
+        echo "$PKG_LIST: No such file, please check your input!"
+        exit 0
+    fi
+}
+
+Save_pkg_list(){
+    if [ $SAVE_PKG_LIST = "true" ];then
+        cmd_result=$(dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck list installed --releasever=None | sed -n '3,$p' | awk '{print $1}' | sed -e 's/.[^.]*$//' )
+        echo ${cmd_result} > $DEFAULT_PKG_LIST_FILE
+        echo "Save installed package list in $DEFAULT_PKG_LIST_FILE"
+    fi
 }
 
 dnf-call() {
@@ -458,18 +471,42 @@ dnf-call() {
         exit 0
     else
         source $WORKDIR/.env-dnf
-
-        #install from package list file
-        if [ -n "$INSTALL_LIST" ]; then
-            Install_pkg_from_listfile
+        if [ -f ${HIDDEN_ROOTFS}/var/lib/rpm/Packages ];then
+            md5sum -b ${HIDDEN_ROOTFS}/var/lib/rpm/Packages > .md5
         fi
 
-        Date=`date +%Y%m%d%H%M`
-        RELEASE=`echo $STRIP |awk -F '-' '{print $2}'`
-        ROOTFS_TAR=rootfs-${RELEASE}-${Date}.tar.bz2
+        #Execute dnf command line
+        if [ -n "$PKG_LIST" ]; then
+            #Operation from package list file
+            pkg_oper=$1
+            Operation_from_pkg_listfile $pkg_oper
+        else
+            # If number of args is 0, do nothing
+            if [ $# != 0 ]; then
+                dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* --releasever=None
+                # For exception output, just exit.
+                if [ $? = 1 ]; then
+                    exit 0
+                fi
+            fi
+        fi
 
-        #When you choose tui, the rootfs will be made only after pkg operation
+        Save_pkg_list
+        # The rootfs will be made only after pkg operation
+        if [ -f .md5 ];then
+            md5sum -c .md5 --status > /dev/null
+            if [ $? = 1 ]; then
+                TAR="true"
+            fi
+        elif [ -f ${HIDDEN_ROOTFS}/var/lib/rpm/Packages ];then
+            TAR="true"
+        fi
+
+
         if [ $TAR = "true" ]; then
+            Date=`date +%Y%m%d%H%M`
+            RELEASE=`echo $STRIP |awk -F '-' '{print $2}'`
+            ROOTFS_TAR=rootfs-${RELEASE}-${Date}.tar.bz2
             Put_rootfs_to_destination
         fi
     fi
@@ -482,9 +519,11 @@ if [ $# -eq 0 ]; then
 fi
 
 ARGS_ORG=$*
-ARGS_ORG=`echo $ARGS_ORG | sed 's/-D//' | sed 's/-Y//'| sed 's/--rootfs-tar//'| sed 's/--install_list//'`
 
-ARGS=`getopt -q -a -o hDY -l install_list:,help,rootfs-tar -- "$@"`
+# only reserve args for dnf
+ARGS_RESERVE=`echo $ARGS_ORG | sed 's/-D//' | sed 's/-Y//'| sed 's/--rootfs-tar//'| sed 's/--pkg_list//'| sed 's/--mkrootfs//' | sed 's/--nosave//'`
+
+ARGS=`getopt -q -a -o hDY -l pkg_list:,help,rootfs-tar,mkrootfs,nosave -- "$@"`
 
 eval set -- "${ARGS}"
 while true
@@ -494,12 +533,16 @@ do
                 usage
                 shift
                 ;;
-        --rootfs-tar)
+        --rootfs-tar|--mkrootfs)
                 TAR="true"
                 shift
                 ;;
-        --install_list)
-                INSTALL_LIST=$2
+        --nosave)
+                SAVE_PKG_LIST="false"
+                shift
+                ;;
+        --pkg_list)
+                PKG_LIST=$2
                 shift 2
                 ;;
         --fetch-all)
@@ -526,5 +569,5 @@ if [ "$1"x = "init"x -a $# = 1 ]; then
 elif [ "$1"x = "show"x ]; then
     dnf-show
 else
-    dnf-call $ARGS_ORG
+    dnf-call $ARGS_RESERVE
 fi
