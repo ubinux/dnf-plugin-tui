@@ -1,0 +1,22 @@
+2019/02/28:
+1. Add command line for dnf tui
+# dnf tui --command install/remove/upgrade package_name
+
+2. Add 'pkg_list' option fot dnf tui 
+# dnf tui --command install/remove/upgrade --pkg_list pkg_config
+Do install/remove/upgrade from package list.
+
+3. Add 'nosave' option for command line
+# dnf tui --command install/remove/upgrade package_name –nosave
+In default, save package list for installed packages in .config file.
+Don't save package list for installed packages with 'nosave' option.
+
+2019.01:
+
+1. Init version for tui plugin.
+
+2. Add --auto option.
+
+3. Add support for filesystem image file.
+
+4. Add progress bar for repo scanning and making rootfs.
