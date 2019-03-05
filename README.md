@@ -700,7 +700,46 @@ file system or Reference2 to install systemd based root file system.
           Sub-page size:                  4096 bytes
 ```
 
-### 3.1.4 Manage srpm or spdx file by command line
+### 3.1.4 Manage packages by command line
+
+After init, you can use dnf tui command line to manage packages such as using dnf in other Distro (e.g. Fedora).
+
+More information please reference to https://fedoraproject.org/wiki/DNF?rd=Dnf.
+
+e.g.
+```
+      # dnf tui --command info bash
+      # dnf tui --command install/remove/upgrade bash
+```
+     
+Dnf tui add 'pkg_list' option fot dnf command line
+e.g.
+```
+      # dnf tui --command install --pkg_list .config
+      Unable to detect release version (use '--releasever' to specify release version)
+      install has been complete!
+      Save installed package list in .config
+      Prepare rootfs
+      progress:[##################################################]100%
+      Put rootfs to destination
+      progress:[##################################################]100%
+      Do you like to keep the tarball of rootfs.[Y/n]?
+      y
+      The tarball is /home/zrq/workdir/dnf-test/rootfs-poky-201903041756.tar.bz2
+      Target dir is /opt/ubq/devkit/x86/rootfs-poky-201903041756
+```
+
+      Note:
+      pkg_config file is a package list for packages you want to install, remove or upgrade.
+      Every time after install, remove or upgrade, dnf tui will automatically save the package list for installed packages in .config file in current directory.
+      If you don't want to save .config file, you can add --nosave option.
+e.g.
+```
+      # dnf tui --command install/remove/upgrade bash --nosave
+      # dnf tui --command install/remove/upgrade --pkg_list pkg_config --nosave
+```
+
+### 3.1.5 Manage srpm or spdx file by command line
 
 After init, if you want to manage srpm or spdx files without installation, you can use the subcommands as following:
 <br>(1) fetchsrpm
@@ -718,44 +757,6 @@ After init, if you want to manage srpm or spdx files without installation, you c
       ......
       # ls spdx_download/
       bash-4.3.30.spdx
-```
-
-### 3.1.5 Automatically complete installation in command-line
-
-After init, if you want to install packages automatically, you can use the subcommands as following:
-```
-      # dnf tui --auto -i list         //Here list is the package list file
-      ......
-      Installed:
-      acl.i586 2.2.52-r0                                            bash.i586 4.3.30-r0
-      ncurses-terminfo-base.i586 6.0+20161126-r0                    base-files.qemux86 3.0.14-r89
-      libacl1.i586 2.2.52-r0                                        libattr1.i586 2.4.47-r0
-      libc6.i586 2.25-r0                                            libtinfo5.i586 6.0+20161126-r0
-      update-alternatives-opkg.i586 0.3.4+git0+1a708fd73d-r0
-    
-      Complete!
-      Unable to detect release version (use '--releasever' to specify release version)
-      Last metadata expiration check: 0:00:04 ago on Wed 19 Dec 2018 12:31:38 PM UTC.
-      acl-2.2.52-r0.i586.rpm copy is OK.
-      bash-4.3.30-r0.i586.rpm copy is OK.
-      acl-2.2.52-r0.src.rpm already exists.
-      bash-4.3.30-r0.src.rpm copy is OK.
-      acl-2.2.52.spdx already exists.
-      spdx file: bash-4.3.30.spdx does not exist.....
-      Dependencies resolved.
-      Nothing to do.
-      Complete!
-      Prepare rootfs
-      progress:[##################################################]100%
-      Put rootfs to destination
-      progress:[##################################################]100%
-      Do you like to keep the tar file.[Y/n]?
-      y
-      The tarball is /home/test/workdir/dnf-test/rootfs-poky-201812190433.tar.bz2
-      Target dir is /opt/ubq/devkit/x86/rootfs-poky-201812190433
-        
-      # ls /opt/ubq/devkit/x86/rootfs-poky-201812190433
-      bin  boot  dev  etc  home  lib  media  mnt  proc  run  sbin  sys  tmp  usr  var
 ```
 
 ## 3.2 On target

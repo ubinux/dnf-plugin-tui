@@ -239,6 +239,9 @@ dnf-init() {
     if [ -f .env-dnf ];then
         rm .env-dnf
     fi
+    if [ -f .md5 ];then
+        rm .md5
+    fi
     if [ -d $HIDDEN_ROOTFS_DIR ];then
         echo "Deleting temp rootfs......"
         rm -rf $HIDDEN_ROOTFS_DIR
@@ -491,7 +494,11 @@ dnf-call() {
             fi
         fi
 
-        Save_pkg_list
+        # Save_pkg_list only for pkg operation
+        if echo "$*" | grep -E "install|remove|upgrade" > /dev/null; then
+           Save_pkg_list
+        fi
+
         # The rootfs will be made only after pkg operation
         if [ -f .md5 ];then
             md5sum -c .md5 --status > /dev/null
@@ -501,7 +508,6 @@ dnf-call() {
         elif [ -f ${HIDDEN_ROOTFS}/var/lib/rpm/Packages ];then
             TAR="true"
         fi
-
 
         if [ $TAR = "true" ]; then
             Date=`date +%Y%m%d%H%M`
