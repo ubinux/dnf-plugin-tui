@@ -437,19 +437,21 @@ Put_rootfs_to_destination(){
     echo "Target dir is ${TARGET_ROOTFS}/rootfs-${RELEASE}-${Date}"
 }
 
+dnf_for_cross_env(){
+    dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf \
+        --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d \
+        --repofrompath=oe-repo,${REPO_DIR} \
+        --installroot=${HIDDEN_ROOTFS} \
+        --setopt=logdir=$WORKDIR \
+        --nogpgcheck $* --releasever=None
+}
+
 Operation_from_pkg_listfile(){
     #Check if package list file is exist
     if [ -f $PKG_LIST ]; then
-        PKG_LIST=`cat $PKG_LIST`
-        check_results=$(dnf -y -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* $PKG_LIST --releasever=None)
-
-        #If no packages to be installed, exit
-        if echo "$check_results" | grep -E "Nothing to do.|Error:"; then
-            echo "No package to $1"
-            exit 0
-        else
-            echo "$1 has been complete!"
-        fi
+        echo "Automatically $1 packages from list!"
+        dnf_for_cross_env $*
+        echo "$1 has been complete!"
 
         if [ $FETCH_ALL = "true" ]; then
             dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --installroot=${HIDDEN_ROOTFS} fetchall $PKG_LIST
@@ -462,8 +464,7 @@ Operation_from_pkg_listfile(){
 
 Save_pkg_list(){
     if [ $SAVE_PKG_LIST = "true" ];then
-        cmd_result=$(dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck list installed --releasever=None | sed -n '3,$p' | awk '{print $1}' | sed -e 's/.[^.]*$//' )
-        echo ${cmd_result} > $DEFAULT_PKG_LIST_FILE
+        echo "$(dnf_for_cross_env list installed | sed -n '3,$p' | awk '{print $1}' | sed -e 's/.[^.]*$//' )" > $DEFAULT_PKG_LIST_FILE
         echo "Save installed package list in $DEFAULT_PKG_LIST_FILE"
     fi
 }
@@ -481,22 +482,16 @@ dnf-call() {
         #Execute dnf command line
         if [ -n "$PKG_LIST" ]; then
             #Operation from package list file
-            pkg_oper=$1
-            Operation_from_pkg_listfile $pkg_oper
+            pkg_oper=$(echo $* | sed "s/$PKG_LIST//")
+            pkg_list=`cat $PKG_LIST`
+            Operation_from_pkg_listfile $pkg_oper $pkg_list
         else
             # If number of args is 0, do nothing
-            if [ $# != 0 ]; then
-                dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d --repofrompath=oe-repo,${REPO_DIR} --installroot=${HIDDEN_ROOTFS} --setopt=logdir=$WORKDIR/ --nogpgcheck $* --releasever=None
-                # For exception output, just exit.
-                if [ $? = 1 ]; then
-                    exit 0
-                fi
+            dnf_for_cross_env $*
+            # For exception output, just exit.
+            if [ $? = 1 ]; then
+                exit 0
             fi
-        fi
-
-        # Save_pkg_list only for pkg operation
-        if echo "$*" | grep -E "install|remove|upgrade" > /dev/null; then
-           Save_pkg_list
         fi
 
         # The rootfs will be made only after pkg operation
@@ -504,9 +499,11 @@ dnf-call() {
             md5sum -c .md5 --status > /dev/null
             if [ $? = 1 ]; then
                 TAR="true"
+                Save_pkg_list
             fi
         elif [ -f ${HIDDEN_ROOTFS}/var/lib/rpm/Packages ];then
             TAR="true"
+            Save_pkg_list
         fi
 
         if [ $TAR = "true" ]; then
@@ -527,9 +524,9 @@ fi
 ARGS_ORG=$*
 
 # only reserve args for dnf
-ARGS_RESERVE=`echo $ARGS_ORG | sed 's/-D//' | sed 's/-Y//'| sed 's/--rootfs-tar//'| sed 's/--pkg_list//'| sed 's/--mkrootfs//' | sed 's/--nosave//'`
+ARGS_RESERVE=`echo $ARGS_ORG | sed 's/-D//' | sed 's/-Y//'| sed 's/--pkg_list//'| sed 's/--mkrootfs//' | sed 's/--nosave//' `
 
-ARGS=`getopt -q -a -o hDY -l pkg_list:,help,rootfs-tar,mkrootfs,nosave -- "$@"`
+ARGS=`getopt -q -a -o hDY -l pkg_list:,help,mkrootfs,nosave -- "$@"`
 
 eval set -- "${ARGS}"
 while true
@@ -539,7 +536,7 @@ do
                 usage
                 shift
                 ;;
-        --rootfs-tar|--mkrootfs)
+        --mkrootfs)
                 TAR="true"
                 shift
                 ;;

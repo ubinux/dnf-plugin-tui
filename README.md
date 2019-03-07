@@ -704,34 +704,25 @@ file system or Reference2 to install systemd based root file system.
 
 After init, you can use dnf tui command line to manage packages such as using dnf in other Distro (e.g. Fedora).
 
+e.g. 
+```
+      # dnf tui --command info bash   //show info of a package
+      # dnf tui --command install bash   //install a package
+```
 More information please reference to https://fedoraproject.org/wiki/DNF?rd=Dnf.
-
-e.g.
-```
-      # dnf tui --command info bash
-      # dnf tui --command install/remove/upgrade bash
-```
      
-Dnf tui add 'pkg_list' option fot dnf command line
+New options of tui.
+<br>(1) --pkg_list PKG_LIST
+PKG_LIST is package list file for packages you want to install, remove or upgrade.
 e.g.
 ```
-      # dnf tui --command install --pkg_list .config
-      Unable to detect release version (use '--releasever' to specify release version)
-      install has been complete!
-      Save installed package list in .config
-      Prepare rootfs
-      progress:[##################################################]100%
-      Put rootfs to destination
-      progress:[##################################################]100%
-      Do you like to keep the tarball of rootfs.[Y/n]?
-      y
-      The tarball is /home/zrq/workdir/dnf-test/rootfs-poky-201903041756.tar.bz2
-      Target dir is /opt/ubq/devkit/x86/rootfs-poky-201903041756
+      # dnf tui --command install --pkg_list PKG_LIST //install all packages in PKG_LIST
 ```
 
       Note:
-      pkg_config file is a package list for packages you want to install, remove or upgrade.
       Every time after install, remove or upgrade, dnf tui will automatically save the package list for installed packages in .config file in current directory.
+
+<br>(2) --nosave
       If you don't want to save .config file, you can add --nosave option.
 e.g.
 ```

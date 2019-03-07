@@ -135,7 +135,7 @@ class TuiCommand(commands.Command):
         parser.add_argument("--call", dest="with_call",
                           action="store_true", default=None,
                           help=_(""))
-        parser.add_argument("-i", "--pkg_list", dest="pkg_list",
+        parser.add_argument("--pkg_list", dest="pkg_list",
                           help=_("Package list file"))
         # The value of dest can't be 'command' as value self.opts.command is already be used.
         parser.add_argument("--command", nargs='*', action="store", dest="command_args",
@@ -169,25 +169,23 @@ class TuiCommand(commands.Command):
                     os.environ["LD_PRELOAD"] = ''
                     base_cmd = "%s/dnf-host" % (plugin_dir)
                     if len(self.opts.command_args) > 0:
-                        cmd = base_cmd + " %s" % (' '.join(self.opts.command_args))
+                        #Get cmd option for dnf
+                        cmdstring = self.cli.cmdstring
+                        cmdoption = cmdstring[cmdstring.find('--command') + 9:]
+                        cmd = base_cmd + " %s" % (''.join(cmdoption))
                     #If args number of '--command' is 0, skip it.
                     elif not self.opts.mkrootfs:
                         logger.warning("Command line error: argument --command: expected at least one argument")
                         sys.exit(0)
-
-                    #Append "--pkg_list"
-                    if self.opts.pkg_list:
-                        cmd = cmd + " --pkg_list %s" % (self.opts.pkg_list)
-
-                    #Append "--mkrootfs"
-                    if self.opts.mkrootfs:
-                        cmd = cmd + " --mkrootfs"
-
-                    #Append "--nosave"
-                    if self.opts.nosave:
-                        cmd = cmd + " --nosave"
+                    else:
+                        cmd = base_cmd + " --mkrootfs"
 
                     os.system(cmd)
+                    sys.exit(0)
+
+                # "--pkg_list", "--mkrootfs", "--nosave" can not be used alone
+                if self.opts.pkg_list or self.opts.mkrootfs or self.opts.nosave:
+                    logger.warning("Command line error: dnf tui expected --command")
                     sys.exit(0)
 
                 #Call subprocess dnf tui
