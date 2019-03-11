@@ -165,7 +165,7 @@ class TuiCommand(commands.Command):
                 self.opts.logdir = os.path.dirname(install_root_from_env)
 
                 #Execute dnf command line
-                if isinstance(self.opts.command_args,list):
+                if self.opts.command_args is not None:
                     os.environ["LD_PRELOAD"] = ''
                     base_cmd = "%s/dnf-host" % (plugin_dir)
                     if len(self.opts.command_args) > 0:
@@ -224,7 +224,18 @@ class TuiCommand(commands.Command):
                 sys.exit(0)
 
     def configure(self):
+        # append to ShellDemandSheet missing demands from
+        # dnf.cli.demand.DemandSheet with their default values.
+        default_demands = self.cli.demands
         self.cli.demands = dnf.cli.commands.shell.ShellDemandSheet()
+        for attr in dir(default_demands):
+            if attr.startswith('__'):
+                continue
+            try:
+                getattr(self.cli.demands, attr)
+            except AttributeError:
+                setattr(self.cli.demands, attr, getattr(default_demands, attr))
+
         demands = self.cli.demands
         demands.root_user = False
 

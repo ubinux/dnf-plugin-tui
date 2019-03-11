@@ -702,32 +702,38 @@ file system or Reference2 to install systemd based root file system.
 
 ### 3.1.4 Manage packages by command line
 
-After init, you can use dnf tui command line to manage packages such as using dnf in other Distro (e.g. Fedora).
+After init, you can use dnf tui command line to manage packages such as using dnf in other Distro. 
 
 e.g. 
 ```
       # dnf tui --command info bash   //show info of a package
       # dnf tui --command install bash   //install a package
 ```
-More information please reference to https://fedoraproject.org/wiki/DNF?rd=Dnf.
+More information please refer to https://fedoraproject.org/wiki/DNF?rd=Dnf.
      
-New options of tui.
-<br>(1) --pkg_list PKG_LIST
-PKG_LIST is package list file for packages you want to install, remove or upgrade.
-e.g.
+##### 3.1.4.1 New options of 'dnf tui --command'.
+
+<br>(1) --nosave
+<br>Dnf tui use .config to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
 ```
-      # dnf tui --command install --pkg_list PKG_LIST //install all packages in PKG_LIST
+      # cat .config 
+        base-files
+        bash
+        ......
+```
+<br>If you don't want to update .config file, you can add --nosave option.
+<br>e.g.
+```
+      # dnf tui --command install bash --nosave
+      # dnf tui --command remove bash --nosave
 ```
 
-      Note:
-      Every time after install, remove or upgrade, dnf tui will automatically save the package list for installed packages in .config file in current directory.
+<br>(2) --pkg_list file
+<br>'--pkg_list' is used to manage packages that list in the file, such as install, remove or upgrade.
 
-<br>(2) --nosave
-      If you don't want to save .config file, you can add --nosave option.
 e.g.
 ```
-      # dnf tui --command install/remove/upgrade bash --nosave
-      # dnf tui --command install/remove/upgrade --pkg_list pkg_config --nosave
+      # dnf tui --command install --pkg_list pkg.list
 ```
 
 ### 3.1.5 Manage srpm or spdx file by command line
