@@ -395,6 +395,7 @@ compress_or_decompress() {
 # 1. Compress the rootfs to tarball
 # 2. Decompress tarball to rootfs destination
 Put_rootfs_to_destination(){
+    dnf_for_cross_env clean all -q
     cd ${HIDDEN_ROOTFS}
     echo "Prepare rootfs"
     compress_or_decompress ../${ROOTFS_TAR} ./*
@@ -486,11 +487,13 @@ dnf-call() {
             pkg_list=`cat $PKG_LIST`
             Operation_from_pkg_listfile $pkg_oper $pkg_list
         else
-            # If number of args is 0, do nothing
-            dnf_for_cross_env $*
-            # For exception output, just exit.
-            if [ $? = 1 ]; then
-                exit 0
+            if [ $# -ne 0 ]; then
+                # If number of args is 0, do nothing
+                dnf_for_cross_env $*
+                # For exception output, just exit.
+                if [ $? = 1 ]; then
+                    exit 0
+                fi
             fi
         fi
 
