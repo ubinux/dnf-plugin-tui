@@ -1,3 +1,6 @@
+2019/03/18:
+Add COPYING file.
+
 2019/02/28:
 1. Add command line for dnf tui
 # dnf tui --command install/remove/upgrade package_name
