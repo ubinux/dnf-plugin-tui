@@ -1,0 +1,116 @@
+Subject: [meta-oe][patch] dnf-plugin-tui: new recipe
+
+A new recipe for dnf-plugin called tui.
+This plugin can work in nativesdk environment, and provide some additional functions:
+ 1. Add new command dnf tui --init to make dnf to work on host
+ 2. Text-based user interface for dnf.
+ 3. Manage SPDX files
+ 4. Manage SRPM files
+ 5. Add installation samples for dnf
+
+More details, please reference to https://github.com/ubinux/dnf-plugin-tui/tree/master.
+
+In addition, modify some nativesdk recipes to include dnf-plugin-tui in meta-toolchain.
+
+Signed-off-by: Zheng Ruoqin <zhengrq.fnst@cn.fujitsu.com>
+---
+ .../recipes-core/meta/meta-environment.bbappend    |  3 +++
+ .../nativesdk-packagegroup-sdk-host.bbappend       |  2 ++
+ .../recipes-devtools/dnf-plugin-tui/dnf_%.bbappend | 29 ++++++++++++++++++++++
+ .../dnf-plugin-tui/nativesdk-dnf-plugin-tui.bb     | 29 ++++++++++++++++++++++
+ 4 files changed, 63 insertions(+)
+ create mode 100644 meta-oe/recipes-core/meta/meta-environment.bbappend
+ create mode 100644 meta-oe/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bbappend
+ create mode 100644 meta-oe/recipes-devtools/dnf-plugin-tui/dnf_%.bbappend
+ create mode 100644 meta-oe/recipes-devtools/dnf-plugin-tui/nativesdk-dnf-plugin-tui.bb
+
+diff --git a/meta-oe/recipes-core/meta/meta-environment.bbappend b/meta-oe/recipes-core/meta/meta-environment.bbappend
+new file mode 100644
+index 0000000..2ac268f
+--- /dev/null
++++ b/meta-oe/recipes-core/meta/meta-environment.bbappend
+@@ -0,0 +1,3 @@
++create_sdk_files_append() {
++    echo 'export MACHINE_ARCH=${MACHINE_ARCH}' >> $script
++}
+diff --git a/meta-oe/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bbappend b/meta-oe/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bbappend
+new file mode 100644
+index 0000000..9f85825
+--- /dev/null
++++ b/meta-oe/recipes-core/packagegroups/nativesdk-packagegroup-sdk-host.bbappend
+@@ -0,0 +1,2 @@
++RDEPENDS_${PN}_append = " nativesdk-dnf-plugin-tui \ 
++                          nativesdk-createrepo-c"
+diff --git a/meta-oe/recipes-devtools/dnf-plugin-tui/dnf_%.bbappend b/meta-oe/recipes-devtools/dnf-plugin-tui/dnf_%.bbappend
+new file mode 100644
+index 0000000..ce683e4
+--- /dev/null
++++ b/meta-oe/recipes-devtools/dnf-plugin-tui/dnf_%.bbappend
+@@ -0,0 +1,29 @@
++RDEPENDS_${PN}_class-nativesdk += " \
++  python3-core \
++  python3-codecs \
++  python3-netclient \
++  python3-email \
++  python3-threading \
++  python3-distutils \
++  python3-logging \
++  python3-fcntl \
++  librepo \
++  python3-shell \
++  libcomps \
++  libdnf \
++  python3-sqlite3 \
++  python3-compression \
++  python3-rpm \
++  python3-iniparse \
++  python3-json \
++  python3-curses \
++  python3-misc \
++  python3-gpg \
++  libnewt-python \
++  "
++
++do_install_append_class-nativesdk() {
++        create_wrapper ${D}/${bindir}/dnf \
++                RPM_CONFIGDIR=${SDKPATHNATIVE}${libdir_nativesdk}/rpm \
++                RPM_NO_CHROOT_FOR_SCRIPTS=1
++}
+diff --git a/meta-oe/recipes-devtools/dnf-plugin-tui/nativesdk-dnf-plugin-tui.bb b/meta-oe/recipes-devtools/dnf-plugin-tui/nativesdk-dnf-plugin-tui.bb
+new file mode 100644
+index 0000000..4fbbac8
+--- /dev/null
++++ b/meta-oe/recipes-devtools/dnf-plugin-tui/nativesdk-dnf-plugin-tui.bb
+@@ -0,0 +1,29 @@
++SUMMARY = "A text-based user interface plugin for dnf, used in toolchian environment"
++LICENSE = "GPLv2"
++
++LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
++
++SRC_URI = "git://github.com/ubinux/dnf-plugin-tui.git;branch=master "
++
++SRCREV = "a743116fa78a20f9828533c1de79ad8e4ab2d16c"
++
++inherit nativesdk distutils3-base
++
++S = "${WORKDIR}/git"
++
++RDEPENDS_${PN} += " \
++  nativesdk-dnf \
++  nativesdk-libnewt-python \
++  "
++
++do_install_append() {
++        install -d ${D}${datadir}/dnf
++        install -m 0755 ${S}/samples/* ${D}${datadir}/dnf
++        install -d ${D}${PYTHON_SITEPACKAGES_DIR}/dnf-plugins/mkimg
++        install -m 0755 ${S}/dnf-plugins/mkimg/* ${D}${PYTHON_SITEPACKAGES_DIR}/dnf-plugins/mkimg
++        for file in $(ls ${S}/dnf-plugins/ | grep -v mkimg); do
++            install -m 0755 ${S}/dnf-plugins/$file ${D}${PYTHON_SITEPACKAGES_DIR}/dnf-plugins
++        done
++}
++
++FILES_${PN} += "${datadir}/dnf"
+-- 
+2.7.4
+

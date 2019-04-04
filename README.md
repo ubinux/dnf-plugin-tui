@@ -14,7 +14,7 @@ Since existing dnf can not be used on cross environment(e.g. a x86 PC with Linux
 
 Now, dnf can be used both on host and target(e.g. an arm board) environment.
 
-# 3. Usage of dnf
+# 3. Usage of dnf tui plugin
 
 ## 3.1 On host
 
@@ -23,7 +23,7 @@ Now, dnf can be used both on host and target(e.g. an arm board) environment.
 Make sure you have prepared the following:
   * toolchain (mandatory)
   * rpm packages (mandatory)
-  * add a config file /etc/dnf/dnf.conf (mandatory in ubuntu)
+  * config file /etc/dnf/dnf.conf (mandatory in ubuntu)
   * srpm packages (optional)
   * spdx files (optional)
 
@@ -31,9 +31,9 @@ Make sure you have prepared the following:
   - SELinux must be closed.
   - Run as root.
   - If you want to make filesystem image, ensure following tools are exist on your host:
-    1. mtd-utils(Ubuntu), e2fsprogs (Fedora)
+    1. mtd-utils(Ubuntu), e2fsprogs(Fedora)
     2. squashfs-tools
-  - Do not run two process of dnf in one directory in the same time, as some temp file maybe covered.
+  - Do not run two processes of dnf in one directory at the same time, as some temp files may be covered.
 
 #### (1) toolchain
 &emsp;&emsp;Install the cross-development toolchain(e.g. for i586: poky-glibc-x86_64-meta-toolchain-i586-toolchain-2.6.sh) and set up environment of toolchain.
@@ -41,8 +41,8 @@ Make sure you have prepared the following:
       # sh poky-glibc-x86_64-meta-toolchain-i586-toolchain-2.6.sh
       # . /opt/poky/2.6/environment-setup-i586-poky-linux
       Note
-        - When you compilering toochain, make sure you have patched the patch of patches-yocto.
-        - If you change a terminal, you should source toolchain again.
+        - When you build toolchain, make sure you have patched the patches in patches-yocto. We are trying to push them to the Yocto community.
+        - If you change to anthor terminal, you should source toolchain again.
 ```
 #### (2) rpm packages
 &emsp;&emsp;Put all packages to one repo directory as following:
@@ -54,7 +54,7 @@ Make sure you have prepared the following:
         ......
 ```
 
-&emsp;&emsp;If you have a [comps](https://fedoraproject.org/wiki/How_to_use_and_edit_comps.xml_for_package_groups) file for your repo， you can put it to the repo directory    
+&emsp;&emsp;If you have a [comps](https://fedoraproject.org/wiki/How_to_use_and_edit_comps.xml_for_package_groups) file for your repo, you can put it to the repo directory.
 
       # ls /home/test/workdir/dnf_test/oe_repo/rpm
         comps.xml
@@ -66,10 +66,9 @@ Make sure you have prepared the following:
         bash-4.3.30-r0.src.rpm
         ......
 ```
-
      
 #### (4) spdx files (https://github.com/dl9pf/meta-spdxscanner)
-&emsp;&emsp;Please reference to the README of meta-spdxscanner to get spdx files bu Yocto.
+&emsp;&emsp;Please refer to the README of meta-spdxscanner to get spdx files produced by Yocto.
 ```
       # ls /home/test/workdir/dnf_test/spdx_repo
         bash-4.3.30.spdx
@@ -78,7 +77,7 @@ Make sure you have prepared the following:
 
 ### 3.1.2 Initialize
 
-If you want to ctreate an empty rootfs, you have to run "dnf tui --init".
+If you want to create an empty rootfs, you have to run "dnf tui --init".
 
 ```
 # dnf tui --init
@@ -101,7 +100,7 @@ Save the rootfs to rootfs destination directory.
 Enter SPDX repo directory (default: /home/test/dnf/spdx_repo): 
 You are about to set SPDX repo directory to "/home/test/dnf/spdx_repo". Are you sure[Y/n]?
 ```
-Read the SPDX repodata form the directory.
+Read the SPDX repodata from the directory.
 
 ```
 =================================================================
@@ -114,7 +113,7 @@ Save the SPDX file to the directory.
 Enter SRPM repo directory (default: /home/test/dnf/srpm_repo): 
 You are about to set SRPM repo directory to "/home/test/dnf/srpm_repo". Are you sure[Y/n]?
 ```
-Read the SRPM repodata form the directory.
+Read the SRPM repodata from the directory.
 
 ```
 =================================================================
@@ -128,7 +127,7 @@ Save the SRPM file to the directory.
 Enter RPM repo directory (default: /home/test/dnf/oe_repo): 
 You are about to set RPM repo directory to "/home/test/dnf/oe_repo". Are you sure[Y/n]?
 ```
-Read the RPM repodata form the directory.
+Read the RPM repodata from the directory.
 
 ```
 =================================================================
@@ -147,15 +146,15 @@ Scanning finish
 #
 
   Note
-    - Because dnf tui reads configuration from `pwd`, please make sure the above steps are in the same directory same as you run init.
+    - Because dnf tui reads configuration from `pwd`, please make sure dnf tui runs in the same directory as you run init.
     - Dnf tui will save what you have done until you run init again.
 ```
 
-After init, then, you can manage packages by TUI or command line.
+After init, you can manage packages by TUI or command line.
 
 ### 3.1.3 Manage packages in TUI
 
-  Dnf TUI(textual user interface) Function is developed for dnf. With TUI, it is easy to customize rootfs of target.
+  Dnf TUI(textual user interface) Function is developed for dnf. With TUI, it is easy to customize rootfs for target.
   <br/>Note
   <br/>&emsp;- Please make sure your screen is at least 24 lines and 80 columns.
   <br/>&emsp;- In "Confirm" interface and "License" interface, you can use "←" or "→" to choose "Yes" or "No", and use "Enter" to confirm. "F4" can help you back to previous interface.
@@ -172,6 +171,7 @@ After init, then, you can manage packages by TUI or command line.
         │ Create a source archive(src.rpm)  --->                                   │
         │ Create an spdx archive(spdx)  --->                                       │
         │ Create archive(rpm, src.rpm and spdx files)  --->                        │
+        │ Make filesystem image  --->                                              │
         │                                                                          │
         │                                                                          │
         │                                                                          │
@@ -187,7 +187,7 @@ After init, then, you can manage packages by TUI or command line.
 
 ```
 #### 3.1.3.1 install
-&emsp;&emsp; After enter into "install",the tui will list some ways for user to install package.
+&emsp;&emsp; After enter into "install", the tui will list some ways for user to install package.
 ```
         ┌─────────────────────────┤ Select install type ├──────────────────────────┐
         │                                                                          │
@@ -712,28 +712,30 @@ e.g.
 More information please refer to https://fedoraproject.org/wiki/DNF?rd=Dnf.
      
 ##### 3.1.4.1 New options of 'dnf tui --command'.
-
-<br>(1) --nosave
+(1) --nosave
 <br>Dnf tui use .config to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
 ```
       # cat .config 
         base-files
         bash
         ......
+
 ```
+	Note
+          .config is saved in `pwd`.
+
 <br>If you don't want to update .config file, you can add --nosave option.
 <br>e.g.
 ```
       # dnf tui --command install bash --nosave
       # dnf tui --command remove bash --nosave
 ```
-
-<br>(2) --pkg_list file
-<br>'--pkg_list' is used to manage packages that list in the file, such as install, remove or upgrade.
-
-e.g.
+(2) --pkg_list [file]
+<br>'--pkg_list' is used to manage packages that list in the file.
+<br>e.g.
 ```
-      # dnf tui --command install --pkg_list pkg.list
+      # dnf tui --command install --pkg_list pkg.list   //Install packages that list in pkg.list
+      # dnf tui --command remove --pkg_list pkg.list   //Remove packages that list in pkg.list
 ```
 
 ### 3.1.5 Manage srpm or spdx file by command line
@@ -755,17 +757,6 @@ After init, if you want to manage srpm or spdx files without installation, you c
       # ls spdx_download/
       bash-4.3.30.spdx
 ```
-
-## 3.2 On target
-
-### 3.2.1  Configuration
-
-#### (1) configure rpm repo (mandatory)  
-&emsp;&emsp;The same as using dnf on the other Distro (e.g. Fedora), you have to configure your rpm repo in /etc/yum.repos.d/Base.repo.
-
-### 3.2.2 Usage
-
-The same as dnf.
 
 # 4. Documentation
 
