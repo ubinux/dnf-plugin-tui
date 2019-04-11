@@ -1,18 +1,18 @@
 # 1. Introduction
 ***
-Dandified Yum (DNF) is the next upcoming major version of [Yum](http://yum.baseurl.org/). It does package management using [RPM](http://rpm.org/), [libsolv](https://github.com/openSUSE/libsolv) and [hawkey](https://github.com/rpm-software-management/hawkey) libraries. For metadata handling and package downloads it utilizes [librepo](https://github.com/tojaj/librepo). To process and effectively handle the comps data it uses [libcomps](https://github.com/midnightercz/libcomps).
-
-From yocto2.3, rpm5 and smart are replaced by rpm4 and dnf. And this README is for yocto 2.6+.
+dnf tui plugin to use with [DNF package manager](https://github.com/rpm-software-management/dnf) in [yocto project](https://www.yoctoproject.org/).
 
 # 2. Overview
 ***
-Since existing dnf can not be used on cross environment(e.g. a x86 PC with Linux), we developed dnf tui plugin. The following functions have been developed.
+Since existing dnf can not be used on cross environment(e.g. a x86 PC with Linux), we developed dnf tui plugin and include it in toolchain of yocto to make dnf work on host. 
+The following functions have been developed.
   1. Add new command dnf tui --init to make dnf to work on host 
-  2. Dnf TUI functions
+  2. Text-based user interface for dnf
   3. Manage SPDX files
   4. Manage SRPM files
 
 Now, dnf can be used both on host and target(e.g. an arm board) environment.
+This README is for yocto 2.6+.
 
 # 3. Usage of dnf tui plugin
 
@@ -60,7 +60,7 @@ Make sure you have prepared the following:
         comps.xml
 
 #### (3) srpm packages
-&emsp;&emsp;If you enable "archiver" in you Yocto buid environment, you can get srpm packages for every OSS you build.
+&emsp;&emsp;If you enable "archiver" in you Yocto build environment, you can get srpm packages for every OSS you build.
 ```
       # ls /home/test/workdir/dnf_test/srpm_repo
         bash-4.3.30-r0.src.rpm
@@ -150,16 +150,16 @@ Scanning finish
     - Dnf tui will save what you have done until you run init again.
 ```
 
-After init, you can manage packages by TUI or command line.
+After init, you can manage packages by tui or command line.
 
-### 3.1.3 Manage packages in TUI
+### 3.1.3 Manage packages in tui
 
-  Dnf TUI(textual user interface) Function is developed for dnf. With TUI, it is easy to customize rootfs for target.
+  Dnf tui(textual user interface) Function is developed for dnf. With tui, it is easy to customize rootfs for target.
   <br/>Note
   <br/>&emsp;- Please make sure your screen is at least 24 lines and 80 columns.
   <br/>&emsp;- In "Confirm" interface and "License" interface, you can use "←" or "→" to choose "Yes" or "No", and use "Enter" to confirm. "F4" can help you back to previous interface.
 
-  By the following command you can enter the main interface of TUI.
+  By the following command you can enter the main interface of tui.
   ``` 
       # dnf tui
         ┌────────────────────────┤ Select your operation ├─────────────────────────┐
@@ -167,9 +167,9 @@ After init, you can manage packages by TUI or command line.
         │ Install  --->                                                            │
         │ Remove  --->                                                             │
         │ Upgrade  --->                                                            │
-        │ Create binary package archives(rpm)  --->                                │
-        │ Create a source archive(src.rpm)  --->                                   │
-        │ Create an spdx archive(spdx)  --->                                       │
+        │ Create binary package archives  --->                                     │
+        │ Create a source archive  --->                                            │
+        │ Create an spdx archive  --->                                             │
         │ Create archive(rpm, src.rpm and spdx files)  --->                        │
         │ Make filesystem image  --->                                              │
         │                                                                          │
@@ -219,8 +219,8 @@ After init, you can manage packages by TUI or command line.
 	    as the initialization manager.
 
 ```
-##### (1). dnf TUI can help you filter GPLv3
-&emsp;&emsp;If you select "install" and "NEW" in above, dnf tui will ask you whether you want to install packages
+##### (1). filter GPLv3
+&emsp;&emsp;If you select "install" and "New" in above, dnf tui will ask you whether you want to install packages
 	 with license of GPLv3.
 ```	 
 
@@ -238,7 +238,7 @@ After init, you can manage packages by TUI or command line.
                   └──────────────────────────────────────────┘
 
 
-       - No  : GPLv3 packages will not be selected and not display in the next step.
+       - No  : GPLv3 packages will not be selected and displayed in the next step.
        - Yes : GPLv3 packages can be selected as same as the other packages.
  ```
 
@@ -299,16 +299,16 @@ After init, you can manage packages by TUI or command line.
 	
 	F3:Next  F4:Back  F5:Info  F9:Exit 
 	
-	-  locale : Language pack
-        -  dev : provide header files for other software
-	-  doc : document
-	-  dbg : debug file
-	-  staticdev ：static compilation file
+	-  locale : Language package
+        -  dev : Provide header files for other software
+	-  doc : Document
+	-  dbg : Debug file
+	-  staticdev : Static compilation file
 	-  ptest : Python unit testing framework
 	
 ```
 ##### (4). Confirm install
-&emsp;&emsp;If you select "No" in the "license" interface, but there is GPLV3 packages in the dependencies,
+&emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
 <br>&emsp;&emsp;a dialog box will ask your decision.
 ```
         ┌────────────────────────┤ GPLv3 that be depended ├────────────────────────┐
@@ -334,13 +334,13 @@ After init, you can manage packages by TUI or command line.
 
 ```
 ##### (5). Load package file
-&emsp;&emsp;After select "Load package file", when user enter the name of configuration file and enter
-"OK", dnf tui will install the package which the configuration list.
+&emsp;&emsp;After select "Load package file", when user enter the name of package list file and enter
+"OK", dnf tui will install the package which in the list.
 ```
 
            ┌──────────────────┤   Config File   ├───────────────────┐
            │                                                        │
-           │ Enter the name of configuration file you wish to load: │
+           │ Enter the name of package list file you wish to load:  │
            │                                                        │
            │   .config___________________________________________   │
            │                                                        │
@@ -370,7 +370,7 @@ file system or Reference2 to install systemd based root file system.
                   └──────────────────────────────────────────┘
 ```
 #### 3.1.3.2 Remove
-&emsp;&emsp;You can choose the package that you want to upgrade after enter "Remove" in main interface.
+&emsp;&emsp;You can choose the package that you want to remove after entering "Remove" in main interface.
 ```
         ┌────────────────────────────┤ Select package ├────────────────────────────┐
         │                                                                          │
@@ -396,13 +396,13 @@ file system or Reference2 to install systemd based root file system.
 	F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
 	
 	Note
-          - []  Means the package could be upgrade and has not been selected. If you want to upgrade it, you can
-                select it by pressing Space or Enter.
+          - []  Means the package could be removed and has not been selected. 
+                If you want to remove it, you can select it by pressing Space or Enter.
           - [-] Means the package has been selected, installed and will be removed.
 
 ```
 #### 3.1.3.3 Upgrade
-&emsp;&emsp;You can choose the package that you want to upgrade after enter "Upgrade" in main interface.
+&emsp;&emsp;You can choose the package that you want to upgrade after entering "Upgrade" in main interface.
 ```
         ┌────────────────────────────┤ Select package ├────────────────────────────┐
         │                                                                          │
@@ -428,41 +428,12 @@ file system or Reference2 to install systemd based root file system.
 	F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
 	
         Note
-          - []  Means the package could be upgrade and has not been selected. If you want to upgrade it, you can
-                select it by pressing Space or Enter.
+          - []  Means the package could be upgraded and has not been selected. 
+                If you want to upgrade it, you can select it by pressing Space or Enter.
           - [U] Means the package has been selected, installed and will be upgraded.
 ```
-#### 3.1.3.4 manage source archive & spdx archive
-&emsp;&emsp;You can choose the package that you want to get spdx/srpm archive after enter "Create spdx archive" or "Create spdx archive" in main interface.
-```
-        ┌────────────────────────────┤ Select package ├────────────────────────────┐
-        │                                                                          │
-        │ [S] base-files                                                           │
-        │ [S] base-passwd                                                          │
-        │ [S] busybox                                                              │
-        │ [ ] busybox-syslog                                                       │
-        │ [ ] busybox-udhcpc                                                       │
-        │ [ ] busybox-udhcpd                                                       │
-        │ [ ] libc6                                                                │
-        │ [ ] update-alternatives-opkg                                             │
-        │ [ ] update-rc.d                                                          │
-        │                                                                          │
-        │                                                                          │
-        │                                                                          │
-        │                                                                          │
-        │ ------------------------------------------------------------------------ │
-        │ All Packages [9]    Selected Packages [3]                                │
-        │                                                                          │
-        └──────────────────────────────────────────────────────────────────────────┘
-
-        F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-
-        Note
-          - []  Means the package has not been selected.
-          - [S] Means the package has been selected, installed and will be used to created.
-```
-#### 3.1.3.5 manage binary package archives
-&emsp;&emsp;You can choose the package that you want to get binary package archive after enter "Create binary package archives(rpm)" in main interface.
+#### 3.1.3.4 manage binary package archives
+&emsp;&emsp;You can choose the package that you want to get binary package archive after entering "Create binary package archives" in main interface.
 ```
         ┌────────────────────────────┤ Select package ├────────────────────────────┐
         │                                                                          │
@@ -488,7 +459,36 @@ file system or Reference2 to install systemd based root file system.
 
         Note
           - []  Means the package has not been selected.
-          - [R] Means the package has been selected, installed and will be used to created.
+          - [R] Means the package has been selected, installed and will be created.
+```
+#### 3.1.3.5 manage source archive & spdx archive
+&emsp;&emsp;You can choose the package that you want to get spdx/srpm archive after entering "Create spdx archive" or "Create source archive" in main interface.
+```
+        ┌────────────────────────────┤ Select package ├────────────────────────────┐
+        │                                                                          │
+        │ [S] base-files                                                           │
+        │ [S] base-passwd                                                          │
+        │ [S] busybox                                                              │
+        │ [ ] busybox-syslog                                                       │
+        │ [ ] busybox-udhcpc                                                       │
+        │ [ ] busybox-udhcpd                                                       │
+        │ [ ] libc6                                                                │
+        │ [ ] update-alternatives-opkg                                             │
+        │ [ ] update-rc.d                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │                                                                          │
+        │ ------------------------------------------------------------------------ │
+        │ All Packages [9]    Selected Packages [3]                                │
+        │                                                                          │
+        └──────────────────────────────────────────────────────────────────────────┘
+
+        F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
+
+        Note
+          - []  Means the package has not been selected.
+          - [S] Means the package has been selected, installed and will be created.
 ```
 #### 3.1.3.6 manage archive
 &emsp;&emsp;You can choose the package that you want to get archive after entering "Create archive(rpm, src.rpm and spdx files)" in main interface.
@@ -517,7 +517,7 @@ file system or Reference2 to install systemd based root file system.
 
         Note
           - []  Means the package has not been selected.
-          - [A] Means the package has been selected, installed and will be used to created.
+          - [A] Means the package has been selected, installed and will be created.
 ```
 #### 3.1.3.7 Make filesystem image
 &emsp;&emsp;You can choose the filesystem image which you want to make after entering "Make filesystem image" in main interface.
@@ -547,7 +547,7 @@ file system or Reference2 to install systemd based root file system.
 
 
 ```
-##### 3.1.3.7 JFFS2 image
+##### (1) JFFS2 image
 &emsp;&emsp;Select JFFS2 in "Select Image type" to make JFFS2 image.
 ```
         ┌───────────────────┤ JFFS2 Parameter ├───────────────────┐
@@ -573,7 +573,7 @@ file system or Reference2 to install systemd based root file system.
           - To directory:
             The path where you want to put your image file.
           - Image size:
-            Must bigger than the size of root filesystem you input in "From directory".
+            Must bigger than the size of root filesystem you enter in "From directory".
           - Page size and Erase block size:
             Can obtain from mtdinfo.
 
@@ -590,7 +590,7 @@ file system or Reference2 to install systemd based root file system.
             Create little-endian or big-endian filesystem.
 ```
 
-##### 3.1.3.8 INITRAMFS image
+##### (2) INITRAMFS image
 &emsp;&emsp;Select INITRAMFS in "Select Image type" to make INITRAMFS image.
 ```
         ┌─────────────────┤ INITRAMFS Parameter ├─────────────────┐
@@ -605,7 +605,7 @@ file system or Reference2 to install systemd based root file system.
         └─────────────────────────────────────────────────────────┘
 ```
 
-##### 3.1.3.9 INITRD image
+##### (3) INITRD image
 &emsp;&emsp;Select INITRD in "Select Image type" to make INITRD image.
 ```
         ┌──────────────────┤ INITRD Parameter ├───────────────────┐
@@ -623,7 +623,7 @@ file system or Reference2 to install systemd based root file system.
         └─────────────────────────────────────────────────────────┘
 ```
 
-##### 3.1.3.10 RAW image
+##### (4) RAW image
 &emsp;&emsp;Select RAW in "Select Image type" to make RAW image.
 ```
         ┌────────────────────┤ RAW Parameter ├────────────────────┐
@@ -645,7 +645,7 @@ file system or Reference2 to install systemd based root file system.
           - Filesystem type can be ext2/ext3/ext4.
 ```
 
-##### 3.1.3.11 SquashFS image
+##### (5) SquashFS image
 &emsp;&emsp;Select SquashFS in "Select Image type" to make SquashFS image.
 ```
         ┌─────────────────┤ SquashFS Parameter ├──────────────────┐
@@ -661,7 +661,7 @@ file system or Reference2 to install systemd based root file system.
         └─────────────────────────────────────────────────────────┘
 ```
 
-##### 3.1.3.12 UBIFS image
+##### (6) UBIFS image
 &emsp;&emsp;Select UBIFS in "Select Image type" to make UBIFS image.
 ```
         ┌────────────────────┤ UBIFS Parameter ├─────────────────────┐
@@ -702,18 +702,21 @@ file system or Reference2 to install systemd based root file system.
 
 ### 3.1.4 Manage packages by command line
 
-After init, you can use dnf tui command line to manage packages such as using dnf in other Distro. 
+After init, you can use dnf tui command line to manage packages. 
 
-e.g. 
 ```
-      # dnf tui --command info bash   //show info of a package
-      # dnf tui --command install bash   //install a package
+      # dnf tui --command list  
+      # dnf tui --command search <spec>   
+      # dnf tui --command info <spec>   
+      # dnf tui --command repolist  
+      # dnf tui --command install <spec>   
+      # dnf tui --command remove <spec>   
+      # dnf tui --command upgrade <spec>   
 ```
-More information please refer to https://fedoraproject.org/wiki/DNF?rd=Dnf.
      
-##### 3.1.4.1 New options of 'dnf tui --command'.
-(1) --nosave
-<br>Dnf tui use .config to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
+#### 3.1.4.1 New options of 'dnf tui --command'.
+##### (1) --nosave
+<br> .config is used to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
 ```
       # cat .config 
         base-files
@@ -730,7 +733,7 @@ More information please refer to https://fedoraproject.org/wiki/DNF?rd=Dnf.
       # dnf tui --command install bash --nosave
       # dnf tui --command remove bash --nosave
 ```
-(2) --pkg_list [file]
+##### (2) --pkg_list [file]
 <br>'--pkg_list' is used to manage packages that list in the file.
 <br>e.g.
 ```
@@ -741,16 +744,14 @@ More information please refer to https://fedoraproject.org/wiki/DNF?rd=Dnf.
 ### 3.1.5 Manage srpm or spdx file by command line
 
 After init, if you want to manage srpm or spdx files without installation, you can use the subcommands as following:
-<br>(1) fetchsrpm
+#### (1) fetchsrpm
 ```
       # dnf fetchsrpm bash
       ......
       # ls srpm_download/
       bash-4.3.30.src.rpm
 ```
-  (2) fetchspdx
-<br>&emsp;&emsp;fetchsrpm is the same as fetchspdx
-
+#### (2) fetchspdx
 ```	
       # dnf fetchspdx bash 
       ......
@@ -758,8 +759,5 @@ After init, if you want to manage srpm or spdx files without installation, you c
       bash-4.3.30.spdx
 ```
 
-# 4. Documentation
-
-***
-If you want to know more knowledge about dnf, read the documentation of dnf.
-The DNF package distribution contains man pages, dnf(9) and dnf.conf(8). It is also possible to [read the DNF documentation](http://dnf.readthedocs.org/)online, the page includes API documentation. There's also a [wiki](https://github.com/rpm-software-management/dnf/wiki) meant for contributors to DNF and related projects.
+## 3.2 On target
+TODO

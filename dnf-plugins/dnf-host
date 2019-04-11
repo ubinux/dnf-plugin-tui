@@ -441,7 +441,6 @@ Put_rootfs_to_destination(){
 dnf_for_cross_env(){
     dnf -c ${HIDDEN_ROOTFS}/etc/dnf/dnf-host.conf \
         --setopt=reposdir=${HIDDEN_ROOTFS}/etc/yum.repos.d \
-        --repofrompath=oe-repo,${REPO_DIR} \
         --installroot=${HIDDEN_ROOTFS} \
         --setopt=logdir=$WORKDIR \
         --nogpgcheck $* --releasever=None
