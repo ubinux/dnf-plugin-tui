@@ -146,82 +146,87 @@ class TuiCommand(commands.Command):
                                  default=None, help=_("Don't save Package list file"))
 
     def pre_configure(self):
-        plugin_dir = os.path.split(__file__)[0] #the dir of dnf-host script
-        if self.opts.with_init:
-            os.system("%s/dnf-host init" %plugin_dir)
-            sys.exit(0)
-        if self.opts.with_call:
+        # Used in target
+        if "OECORE_NATIVE_SYSROOT" not in os.environ:
             return
-        else:
-            #Reload the conf and args
-            env_path = os.getcwd() + "/.env-dnf"
-            if os.path.exists(env_path):
-                # Before using dnf in cross-environment, source env path first
-                read_environ(env_path)
-
-                install_root_from_env = os.environ['HIDDEN_ROOTFS']
-                self.opts.installroot = install_root_from_env
-                self.opts.config_file_path = install_root_from_env + "/etc/dnf/dnf-host.conf"
-                self.opts.logdir = os.path.dirname(install_root_from_env)
-
-                #Execute dnf command line
-                if self.opts.command_args is not None:
-                    os.environ["LD_PRELOAD"] = ''
-                    base_cmd = "%s/dnf-host" % (plugin_dir)
-                    if len(self.opts.command_args) > 0:
-                        #Get cmd option for dnf
-                        cmdstring = self.cli.cmdstring
-                        cmdoption = cmdstring[cmdstring.find('--command') + 9:]
-                        cmd = base_cmd + " %s" % (''.join(cmdoption))
-                    #If args number of '--command' is 0, skip it.
-                    elif not self.opts.mkrootfs:
-                        logger.warning("Command line error: argument --command: expected at least one argument")
-                        sys.exit(0)
-                    else:
-                        cmd = base_cmd + " --mkrootfs"
-
-                    os.system(cmd)
-                    sys.exit(0)
-
-                # "--pkg_list", "--mkrootfs", "--nosave" can not be used alone
-                if self.opts.pkg_list or self.opts.mkrootfs or self.opts.nosave:
-                    logger.warning("Command line error: dnf tui expected --command")
-                    sys.exit(0)
-
-                #Call subprocess dnf tui
-                tar = False
-                old_md5 = None
-
-                rpm_dbfile = self.opts.installroot + "/var/lib/rpm/Packages"
-                if os.path.exists(rpm_dbfile):
-                    f1 = open(rpm_dbfile, 'rb')
-                    old_md5 = hashlib.md5(f1.read()).hexdigest()
-
-                exit_code = call(["dnf", "tui", "--call", "-c{}".format(
-                                  self.opts.config_file_path), "--installroot={}".format(
-                                  self.opts.installroot), "--setopt=logdir={}".format(
-                                  self.opts.logdir), "--releasever=None"])
-                if exit_code != 0:
-                    raise dnf.exceptions.Error(_("Failed to call dnf tui"))
-                
-                #When you choose tui, the rootfs will be made only after pkg operation
-                if old_md5:
-                    f2 = open(rpm_dbfile, 'rb')
-                    new_md5 = hashlib.md5(f2.read()).hexdigest()
-                    if old_md5 != new_md5:
-                        tar = True
-                elif os.path.exists(rpm_dbfile):
-                    tar = True
-
-                if tar: 
-                    plugin_dir = os.path.split(__file__)[0]
-                    os.environ["LD_PRELOAD"] = ''
-                    os.system("%s/dnf-host --mkrootfs" %plugin_dir)
+        else:    
+        # Used in host
+            plugin_dir = os.path.split(__file__)[0] #the dir of dnf-host script
+            if self.opts.with_init:
+                os.system("%s/dnf-host init" %plugin_dir)
                 sys.exit(0)
-            
+            if self.opts.with_call:
+                return
             else:
-                logger.warning("Please Init the environment first!\nUsage: dnf tui --init")
-                sys.exit(0)
+                #Reload the conf and args
+                env_path = os.getcwd() + "/.env-dnf"
+                if os.path.exists(env_path):
+                    # Before using dnf in cross-environment, source env path first
+                    read_environ(env_path)
+
+                    install_root_from_env = os.environ['HIDDEN_ROOTFS']
+                    self.opts.installroot = install_root_from_env
+                    self.opts.config_file_path = install_root_from_env + "/etc/dnf/dnf-host.conf"
+                    self.opts.logdir = os.path.dirname(install_root_from_env)
+
+                    #Execute dnf command line
+                    if self.opts.command_args is not None:
+                        os.environ["LD_PRELOAD"] = ''
+                        base_cmd = "%s/dnf-host" % (plugin_dir)
+                        if len(self.opts.command_args) > 0:
+                            #Get cmd option for dnf
+                            cmdstring = self.cli.cmdstring
+                            cmdoption = cmdstring[cmdstring.find('--command') + 9:]
+                            cmd = base_cmd + " %s" % (''.join(cmdoption))
+                        #If args number of '--command' is 0, skip it.
+                        elif not self.opts.mkrootfs:
+                            logger.warning("Command line error: argument --command: expected at least one argument")
+                            sys.exit(0)
+                        else:
+                            cmd = base_cmd + " --mkrootfs"
+
+                        os.system(cmd)
+                        sys.exit(0)
+
+                    # "--pkg_list", "--mkrootfs", "--nosave" can not be used alone
+                    if self.opts.pkg_list or self.opts.mkrootfs or self.opts.nosave:
+                        logger.warning("Command line error: dnf tui expected --command")
+                        sys.exit(0)
+
+                    #Call subprocess dnf tui
+                    tar = False
+                    old_md5 = None
+
+                    rpm_dbfile = self.opts.installroot + "/var/lib/rpm/Packages"
+                    if os.path.exists(rpm_dbfile):
+                        f1 = open(rpm_dbfile, 'rb')
+                        old_md5 = hashlib.md5(f1.read()).hexdigest()
+
+                    exit_code = call(["dnf", "tui", "--call", "-c{}".format(
+                                      self.opts.config_file_path), "--installroot={}".format(
+                                      self.opts.installroot), "--setopt=logdir={}".format(
+                                      self.opts.logdir), "--releasever=None"])
+                    if exit_code != 0:
+                        raise dnf.exceptions.Error(_("Failed to call dnf tui"))
+                    
+                    #When you choose tui, the rootfs will be made only after pkg operation
+                    if old_md5:
+                        f2 = open(rpm_dbfile, 'rb')
+                        new_md5 = hashlib.md5(f2.read()).hexdigest()
+                        if old_md5 != new_md5:
+                            tar = True
+                    elif os.path.exists(rpm_dbfile):
+                        tar = True
+
+                    if tar: 
+                        plugin_dir = os.path.split(__file__)[0]
+                        os.environ["LD_PRELOAD"] = ''
+                        os.system("%s/dnf-host --mkrootfs" %plugin_dir)
+                    sys.exit(0)
+                
+                else:
+                    logger.warning("Please Init the environment first!\nUsage: dnf tui --init")
+                    sys.exit(0)
 
     def configure(self):
         # append to ShellDemandSheet missing demands from
@@ -240,7 +245,7 @@ class TuiCommand(commands.Command):
         demands.root_user = False
 
     def run(self, command=None, argv=None):
-        if self.opts.installroot:  #if used in toolchain
+        if "OECORE_NATIVE_SYSROOT" in os.environ: #if used in toolchain
             if self.opts.with_call:
                 logger.debug("Enter tui interface.")
                 self.PKGINSTDispMain()
@@ -264,6 +269,11 @@ class TuiCommand(commands.Command):
             cmd.run()
         except:
             pass
+#        except Exception as e:
+#            logger.error(_("%s."), e)
+#            StopHotkeyScreen(self.screen)
+#            self.screen = None
+#            sys.exit(0)
 
     def PKG_filter(self, packages):
         strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
