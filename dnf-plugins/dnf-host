@@ -464,7 +464,7 @@ Operation_from_pkg_listfile(){
 
 Save_pkg_list(){
     if [ $SAVE_PKG_LIST = "true" ];then
-        echo "$(dnf_for_cross_env list installed | sed -n '3,$p' | awk '{print $1}' | sed -e 's/.[^.]*$//' )" > $DEFAULT_PKG_LIST_FILE
+        echo "$(dnf_for_cross_env list installed | sed -n '2,$p' | awk '{print $1}' | sed -e 's/.[^.]*$//' )" > $DEFAULT_PKG_LIST_FILE
         echo "Save installed package list in $DEFAULT_PKG_LIST_FILE"
     fi
 }
