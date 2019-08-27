@@ -102,7 +102,7 @@ export_env () {
     echo "OPKG_OFFLINE_ROOT=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
     echo "INTERCEPT_DIR=$WORKDIR/intercept_scripts" >> $WORKDIR/.env-dnf
     echo "NATIVE_ROOT=$OECORE_NATIVE_SYSROOT" >> $WORKDIR/.env-dnf
-    echo "RPM_ETCCONFIGDIR=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "RPM_ETCCONFIGDIR=$OECORE_TARGET_SYSROOT" >> $WORKDIR/.env-dnf
 }
 
 check_para () {
@@ -202,18 +202,18 @@ EOF
 
     if [ ! -d $HIDDEN_ROOTFS_DIR/etc/dnf/vars ]; then
         mkdir -p $HIDDEN_ROOTFS_DIR/etc/dnf/vars
-        echo -n "${MACHINE_ARCH}:${ARCH}:" >> $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
+        cp $OECORE_TARGET_SYSROOT/etc/dnf/vars/arch $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
     fi
 
-    #necessary rpm config
-    if [ ! -d $HIDDEN_ROOTFS_DIR/etc/rpm ] || [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpm/platform ]; then
-        mkdir -p $HIDDEN_ROOTFS_DIR/etc/rpm
-        echo "${MACHINE_ARCH}-pc-linux" > $HIDDEN_ROOTFS_DIR/etc/rpm/platform
-    fi
-
-    if [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpmrc ]; then
-        echo -n "arch_compat: ${MACHINE_ARCH}: all any noarch ${ARCH} ${MACHINE_ARCH}" > $HIDDEN_ROOTFS_DIR/etc/rpmrc
-    fi
+#    #necessary rpm config
+#    if [ ! -d $HIDDEN_ROOTFS_DIR/etc/rpm ] || [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpm/platform ]; then
+#        mkdir -p $HIDDEN_ROOTFS_DIR/etc/rpm
+#        cp $OECORE_NATIVE_SYSROOT/etc/rpm/platform $HIDDEN_ROOTFS_DIR/etc/rpm/platform
+#    fi
+#
+#    if [ ! -f $HIDDEN_ROOTFS_DIR/etc/rpmrc ]; then
+#        cp $OECORE_NATIVE_SYSROOT/etc/rpmrc $HIDDEN_ROOTFS_DIR/etc/rpmrc
+#    fi
 
     if [ ${DEFINE_REPO_DIR:0:4} = "http" ];then
 
@@ -224,14 +224,6 @@ baseurl=$DEFINE_REPO_DIR
 enabled=1
 gpgcheck=0 
 EOF
-    else
-        echo "Scanning repo ..."
-        all_pkg=`ls -lR $DEFINE_REPO_DIR | grep "^-" |grep rpm$ |wc -l`
-        i=1
-        travFolder $DEFINE_REPO_DIR
-        echo -e "\nScanning finish"
-        sed -i "s/:$/\n/g" $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
-        sed -i "s/:$//g" $HIDDEN_ROOTFS_DIR/etc/rpmrc
     fi
 }
 
