@@ -12,7 +12,7 @@ The following functions have been developed.
   4. Manage SRPM files
 
 Now, dnf can be used both on host and target(e.g. an arm board) environment.
-This README is for yocto 2.6+.
+This README is for yocto 3.0+.
 
 # 3. Usage of dnf tui plugin
 
@@ -35,11 +35,29 @@ Make sure you have prepared the following:
     2. squashfs-tools
   - Do not run two processes of dnf in one directory at the same time, as some temp files may be covered.
 
-#### (1) toolchain
-&emsp;&emsp;Install the cross-development toolchain(e.g. for i586: poky-glibc-x86_64-meta-toolchain-i586-toolchain-2.6.sh) and set up environment of toolchain.
+####Bitbake the cross-development toolchain  (1) toolchain
+&emsp;&emsp;Bitbake the cross-development toolchain(e.g. for x86_64: poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh).Install the toolchain and set up environment of toolchain.
 ```
-      # sh poky-glibc-x86_64-meta-toolchain-i586-toolchain-2.6.sh
-      # . /opt/poky/2.6/environment-setup-i586-poky-linux
+      Checkout poky and meta-oe to stable version:
+      $ git clone git://git.yoctoproject.org/poky
+      $ cd poky
+      $ git checkout origin/zeus -b zeus
+
+      Apply patch supplied in poky-patches:
+      $ patch -p1 < 0001-poky-3.0-PATCH-Added-some-nativesdk-oss-in-t.patch
+      
+      $ git clone git://git.openembedded.org/meta-openembedded
+      $ cd meta-openembedded
+      $ git checkout origin/zeus -b zeus
+      
+      Bitbake meta-toolchain to produce toolchain.
+      $ source poky/oe-init-build-env build/
+      $ bitbake meta-toolchain 
+      $ ls tmp/deploy/sdk/poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
+
+      Put toolchain to your host.
+      # sh poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
+      # . /opt/poky/3.0/environment-setup-core2-64-poky-linux
       Note
         - When you build toolchain, make sure you have patched the patches in patches-yocto. We are trying to push them to the Yocto community.
         - If you change to anthor terminal, you should source toolchain again.
@@ -48,9 +66,9 @@ Make sure you have prepared the following:
 &emsp;&emsp;Put all packages to one repo directory as following:
 ```
       # ls /home/test/workdir/dnf_test/oe_repo/rpm
-        acl-2.2.52-r0.i586.rpm
-        acl-dbg-2.2.52-r0.i586.rpm
-        acl-dev-2.2.52-r0.i586.rpm
+        acl-2.2.52-r0.core2_64.rpm
+        acl-dbg-2.2.52-r0.core2_64.rpm
+        acl-dev-2.2.52-r0.core2_64.rpm
         ......
 ```
 
@@ -63,7 +81,7 @@ Make sure you have prepared the following:
 &emsp;&emsp;If you enable "archiver" in you Yocto build environment, you can get srpm packages for every OSS you build.
 ```
       # ls /home/test/workdir/dnf_test/srpm_repo
-        bash-4.3.30-r0.src.rpm
+        bash-5.0-r0.src.rpm
         ......
 ```
      
