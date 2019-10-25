@@ -35,7 +35,7 @@ Make sure you have prepared the following:
     2. squashfs-tools
   - Do not run two processes of dnf in one directory at the same time, as some temp files may be covered.
 
-####Bitbake the cross-development toolchain  (1) toolchain
+#### (1) toolchain
 &emsp;&emsp;Bitbake the cross-development toolchain(e.g. for x86_64: poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh).Install the toolchain and set up environment of toolchain.
 ```
       Checkout poky and meta-oe to stable version:
