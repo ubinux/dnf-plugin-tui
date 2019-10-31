@@ -1,0 +1,22 @@
+Subject: [poky 3.0] [PATCH] Added MACHINE_ARCH in toolchain.
+
+Signed-off-by: Zheng Ruoqin <zhengrq.fnst@cn.fujitsu.com>
+---
+ meta/classes/toolchain-scripts.bbclass | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/meta/classes/toolchain-scripts.bbclass b/meta/classes/toolchain-scripts.bbclass
+index db1d321..8fd1ccd 100644
+--- a/meta/classes/toolchain-scripts.bbclass
++++ b/meta/classes/toolchain-scripts.bbclass
+@@ -102,6 +102,7 @@ toolchain_shared_env_script () {
+ 	echo 'export CPPFLAGS="${TARGET_CPPFLAGS}"' >> $script
+ 	echo 'export KCFLAGS="--sysroot=$SDKTARGETSYSROOT"' >> $script
+ 	echo 'export OECORE_DISTRO_VERSION="${DISTRO_VERSION}"' >> $script
++        echo 'export MACHINE_ARCH=${MACHINE_ARCH}' >> $script
+ 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
+ 	echo 'export ARCH=${ARCH}' >> $script
+ 	echo 'export CROSS_COMPILE=${TARGET_PREFIX}' >> $script
+-- 
+2.7.4
+

@@ -36,28 +36,44 @@ Make sure you have prepared the following:
   - Do not run two processes of dnf in one directory at the same time, as some temp files may be covered.
 
 #### (1) toolchain
-&emsp;&emsp;Bitbake the cross-development toolchain(e.g. for x86_64: poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh).Install the toolchain and set up environment of toolchain.
+&emsp;&emsp;Before using dnf tui plugin, you should bitbake the cross-development toolchain in Yocto.
+
+&emsp;&emsp;Checkout poky and meta-oe to stable version.
+
 ```
-      Checkout poky and meta-oe to stable version:
       $ git clone git://git.yoctoproject.org/poky
       $ cd poky
       $ git checkout origin/zeus -b zeus
-
-      Apply patch supplied in poky-patches:
-      $ patch -p1 < 0001-poky-3.0-PATCH-Added-some-nativesdk-oss-in-t.patch
       
       $ git clone git://git.openembedded.org/meta-openembedded
       $ cd meta-openembedded
       $ git checkout origin/zeus -b zeus
-      
-      Bitbake meta-toolchain to produce toolchain.
+```
+&emsp;&emsp;Before creating toolchain. Make sure you have patched the patches in patches-yocto. We are trying to push this patch to the Yocto community.
+
+```
+      $ cd poky
+      $ patch -p1 < 0001-poky-3.0-PATCH-Added-MACHINE_ARCH-in-toolchain.patch
+
+```
+&emsp;&emsp;Bitbake meta-toolchain to produce toolchain.
+
+```
       $ source poky/oe-init-build-env build/
+      $ tail -n 2 conf/local.conf
+      # Add dnf-plugin-tui and createrepo-c into toolchain.
+      TOOLCHAIN_HOST_TASK_append = " nativesdk-dnf-plugin-tui nativesdk-createrepo-c"
+
       $ bitbake meta-toolchain 
       $ ls tmp/deploy/sdk/poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
+```
+&emsp;&emsp;Put toolchain to your host. Then install the toolchain and set up environment of toolchain.
 
-      Put toolchain to your host.
+```
       # sh poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
       # . /opt/poky/3.0/environment-setup-core2-64-poky-linux
+```
+```
       Note
         - When you build toolchain, make sure you have patched the patches in patches-yocto. We are trying to push them to the Yocto community.
         - If you change to anthor terminal, you should source toolchain again.
@@ -162,7 +178,8 @@ Scanning repo ...
 progress:[##################################################]100%
 Scanning finish
 #
-
+```
+```
   Note
     - Because dnf tui reads configuration from `pwd`, please make sure dnf tui runs in the same directory as you run init.
     - Dnf tui will save what you have done until you run init again.
@@ -202,7 +219,6 @@ After init, you can manage packages by tui or command line.
         └──────────────────────────────────────────────────────────────────────────┘
 	
         F5:Info  F9:Exit
-
 ```
 #### 3.1.3.1 install
 &emsp;&emsp; After enter into "install", the tui will list some ways for user to install package.
@@ -228,7 +244,8 @@ After init, you can manage packages by tui or command line.
         └──────────────────────────────────────────────────────────────────────────┘
 
         F4:Back  F5:Info  F9:Exit
-
+```
+```
 	Note
           - New : user can use it to install new package.
           - Load package file : package list for user.
@@ -254,11 +271,11 @@ After init, you can manage packages by tui or command line.
                   │          └───────┘   └──────┘            │
                   │                                          │
                   └──────────────────────────────────────────┘
-
-
+```
+```
        - No  : GPLv3 packages will not be selected and displayed in the next step.
        - Yes : GPLv3 packages can be selected as same as the other packages.
- ```
+```
 
  ##### (2). customize packages
 ```
@@ -283,7 +300,8 @@ After init, you can manage packages by tui or command line.
         └──────────────────────────────────────────────────────────────────────────┘
 
         F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-
+```
+```
          Note
             - []  Means the package has not been selected or installed. If you want to install it, you can
                   select it by pressing Space or Enter.
@@ -316,14 +334,14 @@ After init, you can manage packages by tui or command line.
         └──────────────────────────────────────────────────────────────────────────┘
 	
 	F3:Next  F4:Back  F5:Info  F9:Exit 
-	
+```
+```
 	-  locale : Language package
         -  dev : Provide header files for other software
 	-  doc : Document
 	-  dbg : Debug file
 	-  staticdev : Static compilation file
 	-  ptest : Python unit testing framework
-	
 ```
 ##### (4). Confirm install
 &emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
@@ -349,7 +367,6 @@ After init, you can manage packages by tui or command line.
         └──────────────────────────────────────────────────────────────────────────┘
 	
 	F3:Next  F4:Back  F9:Exit
-
 ```
 ##### (5). Load package file
 &emsp;&emsp;After select "Load package file", when user enter the name of package list file and enter
@@ -412,7 +429,8 @@ file system or Reference2 to install systemd based root file system.
         └──────────────────────────────────────────────────────────────────────────┘
 	
 	F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-	
+```
+```
 	Note
           - []  Means the package could be removed and has not been selected. 
                 If you want to remove it, you can select it by pressing Space or Enter.
@@ -444,7 +462,8 @@ file system or Reference2 to install systemd based root file system.
         └──────────────────────────────────────────────────────────────────────────┘
 	
 	F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-	
+```
+```
         Note
           - []  Means the package could be upgraded and has not been selected. 
                 If you want to upgrade it, you can select it by pressing Space or Enter.
@@ -474,7 +493,8 @@ file system or Reference2 to install systemd based root file system.
         └──────────────────────────────────────────────────────────────────────────┘
 
         F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-
+```
+```
         Note
           - []  Means the package has not been selected.
           - [R] Means the package has been selected, installed and will be created.
@@ -503,7 +523,8 @@ file system or Reference2 to install systemd based root file system.
         └──────────────────────────────────────────────────────────────────────────┘
 
         F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-
+```
+```
         Note
           - []  Means the package has not been selected.
           - [S] Means the package has been selected, installed and will be created.
@@ -532,7 +553,8 @@ file system or Reference2 to install systemd based root file system.
         └──────────────────────────────────────────────────────────────────────────┘
 
         F1:select/unselect All  F2:Search  F3:Next  F4:Back  F5:Info  F9:Exit
-
+```
+```
         Note
           - []  Means the package has not been selected.
           - [A] Means the package has been selected, installed and will be created.
@@ -562,8 +584,6 @@ file system or Reference2 to install systemd based root file system.
 
 
         F4:Back  F5:Info  F9:Exit
-
-
 ```
 ##### (1) JFFS2 image
 &emsp;&emsp;Select JFFS2 in "Select Image type" to make JFFS2 image.
@@ -659,6 +679,8 @@ file system or Reference2 to install systemd based root file system.
         │                                                         │
         └─────────────────────────────────────────────────────────┘
 
+```
+```
         Note
           - Filesystem type can be ext2/ext3/ext4.
 ```
