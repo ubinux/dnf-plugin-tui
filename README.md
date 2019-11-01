@@ -15,7 +15,7 @@ Now, dnf can be used both on host and target(e.g. an arm board) environment.
 This README is for yocto 3.0+.
 
 # 3. Usage of dnf tui plugin
-
+***
 ## 3.1 On host
 
 ### 3.1.1 Prepare
@@ -756,26 +756,26 @@ After init, you can use dnf tui command line to manage packages.
      
 #### 3.1.4.1 New options of 'dnf tui --command'.
 ##### (1) --nosave
-<br> .config is used to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
+&emsp;&emsp;.config is used to save installed packages. Every time after install, remove or upgrade, dnf tui will automatically update .config file.
 ```
       # cat .config 
         base-files
         bash
         ......
-
+```
 ```
 	Note
           .config is saved in `pwd`.
-
-<br>If you don't want to update .config file, you can add --nosave option.
-<br>e.g.
+```
+&emsp;&emsp;If you don't want to update .config file, you can add --nosave option.
+<br>&emsp;&emsp;e.g.
 ```
       # dnf tui --command install bash --nosave
       # dnf tui --command remove bash --nosave
 ```
 ##### (2) --pkg_list [file]
-<br>'--pkg_list' is used to manage packages that list in the file.
-<br>e.g.
+&emsp;&emsp;'--pkg_list' is used to manage packages that list in the file.
+<br>&emsp;&emsp;e.g.
 ```
       # dnf tui --command install --pkg_list pkg.list   //Install packages that list in pkg.list
       # dnf tui --command remove --pkg_list pkg.list   //Remove packages that list in pkg.list
