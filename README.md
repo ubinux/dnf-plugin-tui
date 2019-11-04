@@ -36,7 +36,7 @@ Make sure you have prepared the following:
   - Do not run two processes of dnf in one directory at the same time, as some temp files may be covered.
 
 #### (1) toolchain
-&emsp;&emsp;Before using dnf tui plugin, you should bitbake the cross-development toolchain in Yocto.
+&emsp;&emsp;Before using dnf tui plugin, you should bitbake the cross-development toolchain by Yocto.
 
 &emsp;&emsp;Checkout poky and meta-oe to stable version.
 
@@ -49,14 +49,14 @@ Make sure you have prepared the following:
       $ cd meta-openembedded
       $ git checkout origin/zeus -b zeus
 ```
-&emsp;&emsp;Before creating toolchain. Make sure you have patched the patches in patches-yocto. We are trying to push this patch to the Yocto community.
+&emsp;&emsp;Before creating toolchain. Plese apply the patch in patches-yocto because this patch has not been merged by Yocto yet. We are trying to push this patch to the Yocto community.
 
 ```
       $ cd poky
       $ patch -p1 < 0001-poky-3.0-PATCH-Added-MACHINE_ARCH-in-toolchain.patch
 
 ```
-&emsp;&emsp;Bitbake meta-toolchain to produce toolchain.
+&emsp;&emsp;Bitbake meta-toolchain.
 
 ```
       $ source poky/oe-init-build-env build/
@@ -67,16 +67,19 @@ Make sure you have prepared the following:
       $ bitbake meta-toolchain 
       $ ls tmp/deploy/sdk/poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
 ```
-&emsp;&emsp;Put toolchain to your host. Then install the toolchain and set up environment of toolchain.
+&emsp;&emsp;Copy toolchain script to your host and install.
 
 ```
       # sh poky-glibc-x86_64-meta-toolchain-core2-64-qemux86-64-toolchain-3.0.sh
+```
+
+&emsp;&emsp;Before using dnf，Please set up the environment of crosscompile. 
+```
       # . /opt/poky/3.0/environment-setup-core2-64-poky-linux
 ```
 ```
       Note
-        - When you build toolchain, make sure you have patched the patches in patches-yocto. We are trying to push them to the Yocto community.
-        - If you change to anthor terminal, you should source toolchain again.
+        - If you want to use dnf on the other terminal, please source the environment script again.
 ```
 #### (2) rpm packages
 &emsp;&emsp;Put all packages to one repo directory as following:
