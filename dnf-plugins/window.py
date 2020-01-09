@@ -12,8 +12,11 @@ ACTION_UPGRADE    = 2
 ACTION_GET_PKG    = 3
 ACTION_GET_SOURCE = 4
 ACTION_GET_SPDX   = 5
-ACTION_GET_SPDX   = 6
+ACTION_GET_ALL    = 6
 
+UNSELECTED_PKG    = 0
+SELECTED_PKG      = 1
+INSTALLED_PKG     = 2
 
 Confirm_type_list = [("Exit","\n Do you really want to terminate it?\n\n"), \
                      ("Confirm install","\n Do you want to begin installation?\n\n"), \
@@ -309,12 +312,17 @@ def HotkeyChooseWindow(insScreen, sTitle, conflicts, iWidth, iHeight):
         num += 1
         idx += 1
         for t in sorted(x.items()):
-            str = "[ ] %s" % t[0].name
-            t2.append(str, idx)
+            if t[1] == UNSELECTED_PKG:
+                str = "[ ] %s" % t[0].name
+                t2.append(str, idx)
+            elif t[1] == INSTALLED_PKG:
+                str = "[I] %s" % t[0].name
+                t2.append(str, idx)
             idx += 1
         str = ""
         t2.append(str, idx)
         idx += 1
+    maxListHeight = idx
 
     t3 = snack.Textbox(iWidth, 1, "-" * iWidth)
 
@@ -339,7 +347,7 @@ def HotkeyChooseWindow(insScreen, sTitle, conflicts, iWidth, iHeight):
         if b.buttonPressed(result) == "n":
             for conflict in conflicts:
                 for x in sorted(conflict.items()):
-                    if x[1] == False and x[0] not in cancel_pkgs:
+                    if x[1] == UNSELECTED_PKG and x[0] not in cancel_pkgs:
                         cancel_pkgs.append(x[0])
             # Return
             insScreen.popWindow()
@@ -360,48 +368,66 @@ def HotkeyChooseWindow(insScreen, sTitle, conflicts, iWidth, iHeight):
             if packageId == 0 or packageId == 1:
                 #Get selected package
                 pkg = sorted(conflicts[conflictId].items())[packageId][0]
-                for conflict in conflicts:
-                    if sorted(conflict.items())[0][0] == pkg:
-                        packageLocal = 0
-                    elif sorted(conflict.items())[1][0] == pkg:
-                        packageLocal = 1
-                    else:
-                        conflictLocal += 1
-                        continue
-                    #Change the status of this package
-                    if conflict[pkg] == True:
-                        str = "[ ] %s" % pkg.name
-                        t2.replace(str, conflictLocal * 4 + packageLocal + 1)
-                        conflict[pkg] = False
-                    else:
-                        str = "[*] %s" % pkg.name
-                        t2.replace(str, conflictLocal * 4 + packageLocal + 1)
-                        conflict[pkg] = True
-                        anthorPackageLocal = packageLocal^1
-                        #Get another package of this conflict
-                        pkg = sorted(conflicts[conflictLocal].items())[anthorPackageLocal][0]
-                        AconflictLocal = 0
-                        for Aconflict in conflicts:
-                            if sorted(Aconflict.items())[0][0] == pkg:
-                                ApackageLocal = 0
-                            elif sorted(Aconflict.items())[1][0] == pkg:
-                                ApackageLocal = 1
+                anotherPackageId = packageId ^ 1
+                anotherPkg = sorted(conflicts[conflictId].items())[anotherPackageId][0]
+                #Not processed if status is installed
+                if conflicts[conflictId][anotherPkg] != INSTALLED_PKG and conflicts[conflictId][pkg] != INSTALLED_PKG:
+                    if conflicts[conflictId][pkg] == SELECTED_PKG:
+                        for conflict in conflicts:
+                            if sorted(conflict.items())[0][0] == pkg:
+                                packageLocal = 0
+                            elif sorted(conflict.items())[1][0] == pkg:
+                                packageLocal = 1
                             else:
-                                AconflictLocal += 1
+                                conflictLocal += 1
                                 continue
-                            #Change the status of another package
-                            if Aconflict[pkg] == True:
-                                str = "[ ] %s" % pkg.name
-                                t2.replace(str, AconflictLocal * 4 + ApackageLocal+ 1)
-                                Aconflict[pkg] = False
-                            AconflictLocal += 1
-                    conflictLocal += 1
-                if idx < len(conflicts) * 4 - 3:
-                    if packageId == 0:
-                        idx += 4
+                            #Change the status of all package
+                            str = "[ ] %s" % pkg.name
+                            t2.replace(str, conflictLocal * 4 + packageLocal + 1)
+                            conflict[pkg] = UNSELECTED_PKG
+                            conflictLocal += 1
+                            if packageLocal == 0:
+                                idx += 1
+                            elif packageLocal == 1:
+                                idx -= 1
                     else:
-                        idx += 3
-                t2.setCurrent(idx)
+                        #Determine the status of another packet in a conflict.
+                        anotherIsSelected = False
+                        for conflict in conflicts:
+                            if sorted(conflict.items())[0][0] == pkg:
+                                anotherPackageLocal = 1
+                            elif sorted(conflict.items())[1][0] == pkg:
+                                anotherPackageLocal = 0
+                            else:
+                                conflictLocal += 1
+                                continue
+                            anotherPkg = sorted(conflicts[conflictLocal].items())[anotherPackageLocal][0]
+                            if conflicts[conflictLocal][anotherPkg] == SELECTED_PKG:
+                                anotherIsSelected = True
+                                break
+                            conflictLocal += 1
+                        #If another packet in conflict is in the UNSELECTED state
+                        if anotherIsSelected == False:
+                            conflictLocal = 0
+                            packageLocal = 0
+                            for conflict in conflicts:
+                                if sorted(conflict.items())[0][0] == pkg:
+                                    packageLocal = 0
+                                elif sorted(conflict.items())[1][0] == pkg:
+                                    packageLocal = 1
+                                else:
+                                    conflictLocal += 1
+                                    continue
+                                #Change the status of this package
+                                str = "[*] %s" % pkg.name
+                                t2.replace(str, conflictLocal * 4 + packageLocal + 1)
+                                conflict[pkg] = SELECTED_PKG
+                                conflictLocal += 1
+                                if packageLocal == 0:
+                                    idx += 1
+                                elif packageLocal == 1 and idx < maxListHeight - 2:
+                                    idx += 3
+                    t2.setCurrent(idx)
 
 
 # ------------------------------------------------------------

@@ -27,6 +27,10 @@ import re, shutil, urllib.request, librepo, filecmp
 _USER_HZ = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
 logger = logging.getLogger('dnf')
 
+UNSELECTED_PKG    = 0
+SELECTED_PKG      = 1
+INSTALLED_PKG     = 2
+
 def read_environ(file):
     try:
         with open(file, 'r') as fd:
@@ -185,6 +189,7 @@ def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
     goal = base._goal
     conflicts = []
     num = []
+    system_installed = []
     for selected_pkg in selected_pkgs:
         goal.install(selected_pkg)
     for selected_pkg_spec in selected_pkgs_spec:
@@ -203,7 +208,15 @@ def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
         for i in range(len(conflict_rules)):
             for rule in conflict_rules[i]:
                 if conflict_pkg.name + "-" + conflict_pkg.v in rule:
-                    conflicts[i][conflict_pkg] = False
+                    if conflict_pkg.repoid == "@System":
+                        if conflict_pkg.name not in system_installed:
+                            system_installed.append(conflict_pkg.name)
+                        break
+                    conflicts[i][conflict_pkg] = UNSELECTED_PKG
                     break
+    for conflict in conflicts:
+        for package in conflict.keys():
+            if package.name in system_installed:
+                conflict[package] = INSTALLED_PKG
     base.reset(goal=True)
     return conflicts
