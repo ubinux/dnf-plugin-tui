@@ -253,6 +253,156 @@ def HotkeyExitWindow(insScreen, confirm_type=0):
 
     return result
 
+#------------------------------------------------------------
+# def HotkeyConflictWindow(insScreen, conflicts)
+#
+#   Display "Conflict handle" window.
+#
+# Input:
+#   insScreen : screen instance
+#   conflicts : list of record conflicts
+# Output:
+#   cancel_pkgs : uninstalled packages due to conflict
+#------------------------------------------------------------
+def HotkeyConflictWindow(insScreen, conflicts):
+
+    (result, cancel_pkgs) = HotkeyChooseWindow(insScreen, "Conflict error occured", \
+                 conflicts, \
+                 60, 10)
+
+    return (result, cancel_pkgs)
+
+#------------------------------------------------------------
+# def HotkeyChooseWindow()
+#
+#   Display choose window for Hotkey mode.
+#
+# Input:
+#   insScreen             : screen instance
+#   sTitle                : title string
+#   conflicts             : list of record conflicts
+#   sText                 : main text
+#   iWidth                : width of main text
+#   iHeight               : height of main text
+# Output:
+#   cancel_pkgs : uninstalled packages due to conflict
+#------------------------------------------------------------
+def HotkeyChooseWindow(insScreen, sTitle, conflicts, iWidth, iHeight):
+
+    if len(conflicts) * 4 > iHeight:
+        scroll = 1
+    else:
+        scroll = 0
+
+    # Create Text instance
+    t1 = snack.Textbox(iWidth - scroll * 2, 2, "the following package will conflict during installation:\n")
+    t2 = snack.Listbox(iHeight, scroll = scroll, width = iWidth - scroll * 2)
+    idx = 0
+    num = 1
+    #Initialize the following format information：
+    #conflict 1:
+    #[ ] initscripts-functions
+    #[ ] lsbinitscripts 
+    for x in conflicts:
+        str = "conflict %d:" % num
+        t2.append(str, idx)
+        num += 1
+        idx += 1
+        for t in sorted(x.items()):
+            str = "[ ] %s" % t[0].name
+            t2.append(str, idx)
+            idx += 1
+        str = ""
+        t2.append(str, idx)
+        idx += 1
+
+    t3 = snack.Textbox(iWidth, 1, "-" * iWidth)
+
+    b = snack.ButtonBar(insScreen,((" Next ", "n"), (" Back ", "b")))
+
+    # Create Grid instance
+    g = snack.GridForm(insScreen, sTitle, 1, 4)
+    g.add(t1, 0, 0)
+    g.add(t2, 0, 1)
+    g.add(t3, 0, 2, (-1, 0, -1, 0))
+    g.add(b, 0, 3, (1, 0, 1, -1))
+
+    myhotkeys = {" "     : " "}
+    for x in myhotkeys.keys():
+        g.addHotKey(x)
+
+    cancel_pkgs = []
+    while True:
+        # Display window
+        result = g.run()
+        #next
+        if b.buttonPressed(result) == "n":
+            for conflict in conflicts:
+                for x in sorted(conflict.items()):
+                    if x[1] == False and x[0] not in cancel_pkgs:
+                        cancel_pkgs.append(x[0])
+            # Return
+            insScreen.popWindow()
+            return ('n', cancel_pkgs)
+        #back
+        elif b.buttonPressed(result) == "b":
+            # Return
+            insScreen.popWindow()
+            return ('b', cancel_pkgs)
+        elif myhotkeys[result] == " ":
+            idx = t2.current()
+            #record conflict number
+            conflictId = idx // 4
+            #record package number
+            packageId = idx % 4 - 1
+            conflictLocal = 0
+            packageLocal = 0
+            if packageId == 0 or packageId == 1:
+                #Get selected package
+                pkg = sorted(conflicts[conflictId].items())[packageId][0]
+                for conflict in conflicts:
+                    if sorted(conflict.items())[0][0] == pkg:
+                        packageLocal = 0
+                    elif sorted(conflict.items())[1][0] == pkg:
+                        packageLocal = 1
+                    else:
+                        conflictLocal += 1
+                        continue
+                    #Change the status of this package
+                    if conflict[pkg] == True:
+                        str = "[ ] %s" % pkg.name
+                        t2.replace(str, conflictLocal * 4 + packageLocal + 1)
+                        conflict[pkg] = False
+                    else:
+                        str = "[*] %s" % pkg.name
+                        t2.replace(str, conflictLocal * 4 + packageLocal + 1)
+                        conflict[pkg] = True
+                        anthorPackageLocal = packageLocal^1
+                        #Get another package of this conflict
+                        pkg = sorted(conflicts[conflictLocal].items())[anthorPackageLocal][0]
+                        AconflictLocal = 0
+                        for Aconflict in conflicts:
+                            if sorted(Aconflict.items())[0][0] == pkg:
+                                ApackageLocal = 0
+                            elif sorted(Aconflict.items())[1][0] == pkg:
+                                ApackageLocal = 1
+                            else:
+                                AconflictLocal += 1
+                                continue
+                            #Change the status of another package
+                            if Aconflict[pkg] == True:
+                                str = "[ ] %s" % pkg.name
+                                t2.replace(str, AconflictLocal * 4 + ApackageLocal+ 1)
+                                Aconflict[pkg] = False
+                            AconflictLocal += 1
+                    conflictLocal += 1
+                if idx < len(conflicts) * 4 - 3:
+                    if packageId == 0:
+                        idx += 4
+                    else:
+                        idx += 3
+                t2.setCurrent(idx)
+
 
 # ------------------------------------------------------------
 # def HotkeyAttentionWindow(insScreen, confirm_install=False)

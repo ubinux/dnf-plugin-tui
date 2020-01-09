@@ -16,7 +16,7 @@ import hawkey
 import logging
 
 from .window import *
-from .utils import fetchSPDXorSRPM, read_environ
+from .utils import fetchSPDXorSRPM, read_environ, conflictDetection
 import sys, os, copy, textwrap, snack, string, time, re, shutil, hashlib
 from snack import *
 
@@ -560,16 +560,16 @@ class TuiCommand(commands.Command):
                     if self.install_type == ACTION_INSTALL:
                         # Show hotkey F6 in package selection interface
                         if self.group_botton == False:
-                            (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
+                            (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
                                                                                 None, selected_pkgs, custom_type, pkg_group=[], group_hotkey=True)
 
                         else:
                             # Enter group interface
-                            (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
+                            (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
                                                                                 None, selected_pkgs, custom_type, pkg_group, group_hotkey=False)
 
                     else:
-                        (result, selected_pkgs, pkgs_spec) = self.PKGINSTWindowCtrl(None, \
+                        (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
                                                                                 None, selected_pkgs, custom_type)
 
 
@@ -639,8 +639,8 @@ class TuiCommand(commands.Command):
                 # select special packages(local, dev, dbg, doc, src)
                 #==============================
                 elif stage == STAGE_PACKAGE_SPEC:
-                    (result, selected_pkgs_spec, pkgs_temp) = self.PKGINSTWindowCtrl(pkgTypeList, \
-                                                                                pkgs_spec, selected_pkgs_spec, custom_type)
+                    (result, selected_pkgs_spec, pkgs_temp, cancel_pkgs) = self.PKGINSTWindowCtrl(pkgTypeList, \
+                                                                                pkgs_spec, selected_pkgs_spec, custom_type, conflict_attach_pkgs=selected_pkgs)
                     if result == "b":
                         # back
                         stage = STAGE_PKG_TYPE
@@ -648,6 +648,12 @@ class TuiCommand(commands.Command):
                         stage = STAGE_PKG_TYPE
                     elif result == "n":
                         stage = STAGE_PROCESS
+                        for cancel_pkg in cancel_pkgs:
+                            if cancel_pkg in selected_pkgs:
+                                selected_pkgs.remove(cancel_pkg)
+                            if cancel_pkg in selected_pkgs_spec:
+                                selected_pkgs_spec.remove(cancel_pkg)
+
 
                 # ==============================
                 # Select image type
@@ -710,6 +716,19 @@ class TuiCommand(commands.Command):
                         self.GET_ALL(selected_pkgs)
                         break
                     else:
+                        if self.no_gpl3:
+                            conflicts = conflictDetection(self.base, selected_pkgs, selected_pkgs_spec)
+                            if conflicts != []:
+                                (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
+                                if hkey == "b":
+                                    stage = STAGE_PACKAGE
+                                    break
+                                if hkey == "n":
+                                    for cancel_pkg in cancel_pkgs:
+                                        if cancel_pkg in selected_pkgs:
+                                            selected_pkgs.remove(cancel_pkg)
+                                        if cancel_pkg in selected_pkgs_spec:
+                                            selected_pkgs_spec.remove(cancel_pkg)
                         for pkg in selected_pkgs:           #selected_pkgs
                             if self.install_type == ACTION_INSTALL:
                                 s_line = ["install", pkg.name]
@@ -845,7 +864,7 @@ class TuiCommand(commands.Command):
 
         return display_pkgs
 
-    def PKGINSTWindowCtrl(self, pkgTypeList, packages=None, selected_pkgs=[], custom_type=0, pkg_group=[], group_hotkey=False):
+    def PKGINSTWindowCtrl(self, pkgTypeList, packages=None, selected_pkgs=[], custom_type=0, pkg_group=[], group_hotkey=False, conflict_attach_pkgs=[]):
         STAGE_SELECT = 1
         STAGE_PKG_TYPE = 2
         STAGE_BACK   = 3
@@ -860,6 +879,7 @@ class TuiCommand(commands.Command):
 
         searched_ret = [] 
         pkgs_spec = []
+        cancel_pkgs = []
         position = 0
         search_position = 0
         check = 0
@@ -918,20 +938,26 @@ class TuiCommand(commands.Command):
             if len(display_pkgs) == 0:
                 if not self.no_gpl3:
                     if self.install_type == ACTION_INSTALL:
+                        conflicts = conflictDetection(self.base, conflict_attach_pkgs)
+                        if conflicts != []:
+                            (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
+                            if hkey == "b":
+                                return ("b", selected_pkgs, packages, cancel_pkgs)
+
                         confirm_type = CONFIRM_INSTALL
                         hkey = HotkeyExitWindow(self.screen, confirm_type)
                         if custom_type >= RECORD_INSTALL:
                             selected_pkgs = []
                             selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
                         if hkey == "y":
-                            return ("n", selected_pkgs, packages)
+                            return ("n", selected_pkgs, packages, cancel_pkgs)
                         elif hkey == "n":
-                            return ("k", selected_pkgs, packages)
+                            return ("k", selected_pkgs, packages, cancel_pkgs)
                     else:
                         hkey=HotkeyAttentionWindow(self.screen,ATTENTON_NONE)
-                        return ("b", selected_pkgs, packages)
+                        return ("b", selected_pkgs, packages, cancel_pkgs)
                 else:
-                    return ("n", selected_pkgs, packages)
+                    return ("n", selected_pkgs, packages, cancel_pkgs)
         else:
             # Filter the type pkg such as -dev (Round1)
             if self.install_type == ACTION_INSTALL:
@@ -986,10 +1012,10 @@ class TuiCommand(commands.Command):
                 stage = STAGE_NEXT
             elif self.install_type==ACTION_UPGRADE:
                 hkey = HotkeyAttentionWindow(self.screen, ATTENTON_NONE_UPGRADE)
-                return ("b", selected_pkgs, packages)
+                return ("b", selected_pkgs, packages, cancel_pkgs)
             else:
                 hkey = HotkeyAttentionWindow(self.screen, ATTENTON_NONE)
-                return ("b", selected_pkgs, packages)
+                return ("b", selected_pkgs, packages, cancel_pkgs)
 
         # Load package file or sample
         if custom_type >= RECORD_INSTALL:
@@ -1027,31 +1053,36 @@ class TuiCommand(commands.Command):
                 search = None
                 #if in packages select Interface:
                 if pkgTypeList == None:
-                    return ("n", selected_pkgs, pkgs_spec)
+                    return ("n", selected_pkgs, pkgs_spec, cancel_pkgs)
                 #if in special type packages(dev,doc,locale) select Interface:
                 else:
                     if not self.no_gpl3:
                         if self.install_type == ACTION_INSTALL : confirm_type = CONFIRM_INSTALL
+                        conflicts = conflictDetection(self.base, conflict_attach_pkgs,selected_pkgs)
+                        if conflicts != []:
+                            (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
+                            if hkey == "b":
+                                return ("b", selected_pkgs, packages, cancel_pkgs)
 
                         hkey = HotkeyExitWindow(self.screen, confirm_type)
                         if hkey == "y":
-                            return ("n", selected_pkgs, packages)
+                            return ("n", selected_pkgs, packages, cancel_pkgs)
                         elif hkey == "n":
                             stage = STAGE_SELECT
                     else:
-                        return ("n", selected_pkgs, packages)
+                        return ("n", selected_pkgs, packages, cancel_pkgs)
             elif stage == STAGE_BACK:
                 if not search == None:
                     stage = STAGE_SELECT
                     search = None
                 else:
-                    return ("b", selected_pkgs, pkgs_spec)
+                    return ("b", selected_pkgs, pkgs_spec, cancel_pkgs)
             elif stage == STAGE_GROUP:
                 if not search == None:
                     stage = STAGE_SELECT
                     search = None
                 else:
-                    return ("g", selected_pkgs, pkgs_spec)
+                    return ("g", selected_pkgs, pkgs_spec, cancel_pkgs)
             elif stage == STAGE_INFO:
                 if not search == None:
                     PKGINSTPackageInfoWindow(self.screen, searched_ret[search_position])

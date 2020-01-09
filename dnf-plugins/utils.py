@@ -180,3 +180,30 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
             rpm_name = pkg.name+"-"+pkg.version+"-"+pkg.release+"."+pkg.arch+".rpm"
             fetch_package(option, type, rpm_name)
 
+def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
+    base.reset(goal=True)
+    goal = base._goal
+    conflicts = []
+    num = []
+    for selected_pkg in selected_pkgs:
+        goal.install(selected_pkg)
+    for selected_pkg_spec in selected_pkgs_spec:
+        goal.install(selected_pkg_spec)
+    base._run_hawkey_goal(goal, False)
+    conflict_pkgs = goal.problem_conflicts()
+    conflict_rules = goal.problem_rules()
+    for i in range(len(conflict_rules)):
+        if conflict_rules[i][0] == 'conflicting requests':
+            num.append(i)
+            continue
+        conflicts.append({})
+    for i in reversed(num):
+        del conflict_rules[i]
+    for conflict_pkg in conflict_pkgs:
+        for i in range(len(conflict_rules)):
+            for rule in conflict_rules[i]:
+                if conflict_pkg.name + "-" + conflict_pkg.v in rule:
+                    conflicts[i][conflict_pkg] = False
+                    break
+    base.reset(goal=True)
+    return conflicts
