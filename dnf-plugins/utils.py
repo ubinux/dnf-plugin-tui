@@ -39,7 +39,7 @@ def read_environ(file):
         sys.exit(1)
 
 def PKG_filter(packages):
-    strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
+    strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
     notype_pkgs = packages
     for pkg in packages:
         if "-locale-" in pkg.name:

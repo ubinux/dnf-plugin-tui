@@ -276,7 +276,7 @@ class TuiCommand(commands.Command):
 #            sys.exit(0)
 
     def PKG_filter(self, packages):
-        strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
+        strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
         notype_pkgs = packages
         for pkg in packages:
             if "-locale-" in pkg.name:
@@ -399,6 +399,8 @@ class TuiCommand(commands.Command):
                 pkgTypeList.append(pkgType_staticdev)
                 pkgType_ptest = pkgType("ptest", False, "If select, you can see/select *-ptest packages in the next step.")
                 pkgTypeList.append(pkgType_ptest)
+                pkgType_src = pkgType("src", False, "If select, you can see/select *-src packages in the next step.")
+                pkgTypeList.append(pkgType_src)
 
                 return pkgTypeList
 
@@ -604,7 +606,7 @@ class TuiCommand(commands.Command):
                         stage = STAGE_PACKAGE_SPEC
 
                 #==============================
-                # select special packages(local, dev, dbg, doc) 
+                # select special packages(local, dev, dbg, doc, src)
                 #==============================
                 elif stage == STAGE_PACKAGE_SPEC:
                     (result, selected_pkgs_spec, pkgs_temp) = self.PKGINSTWindowCtrl(pkgTypeList, \
@@ -787,8 +789,8 @@ class TuiCommand(commands.Command):
                 Type_status = True
 
         if Type_status:
-            #Don't show dev, doc, dbg, staticdevdoc and ptest packages
-            strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
+            #Don't show dev, doc, dbg, src, staticdev, doc and ptest packages
+            strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
             for pkg in packages:
                 if "-locale-" in pkg.name and not pkgType_dic["locale"]:
                     display_pkgs.remove(pkg)
@@ -895,7 +897,7 @@ class TuiCommand(commands.Command):
         else:
             # Filter the type pkg such as -dev (Round1)
             if self.install_type == ACTION_INSTALL:
-                strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest')
+                strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
                 for pkg in packages:
                     if "-locale-" in pkg.name:
                         display_pkgs.remove(pkg)

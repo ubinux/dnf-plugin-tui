@@ -1086,6 +1086,7 @@ def PKGINSTPackageSearchWindow(insScreen):
 #      "dbg"    True/False : install/not install dbg package
 #      "static"    True/False : install/not install *-staticdev package
 #      "ptest"    True/False : install/not install *-ptest package
+#      "src"    True/False : install/not install *-src package
 # Output:
 #   pkgTypeList   : select result
 #------------------------------------------------------------
