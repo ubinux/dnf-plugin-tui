@@ -321,17 +321,21 @@ class TuiCommand(commands.Command):
         fetchSPDXorSRPM('spdx', notype_pkgs, 
                     os.environ['SPDX_REPO_DIR'], os.environ['SPDX_DESTINATION_DIR'])
 
-    def Read_ConfigFile(self, display_pkgs, selected_pkgs):
+    def Read_ConfigFile(self, display_pkgs=[], selected_pkgs=[]):
         f = open(self.CONFIG_FILE, "r")
         get_text = f.read()
         config_list = get_text.split('\n')
-
-        for pkg in display_pkgs:
-            if pkg.name in config_list:
-                selected_pkgs.append(pkg)
-        selected_pkgs = list(set(selected_pkgs))
-        f.close()
-        return selected_pkgs
+        
+        if display_pkgs:
+            for pkg in display_pkgs:
+                if pkg.name in config_list:
+                    selected_pkgs.append(pkg)
+            selected_pkgs = list(set(selected_pkgs))
+            f.close()
+            return selected_pkgs
+        else:
+            f.close()
+            return config_list
 
     def Save_ConfigFile(self, selected_pkgs, file_name, mode):
         save_list = []
@@ -598,6 +602,19 @@ class TuiCommand(commands.Command):
                 # select package type
                 #==============================
                 elif stage == STAGE_PKG_TYPE:
+                    if custom_type == RECORD_INSTALL:
+                        # get packagelist from .config
+                        pkgConfigList = self.Read_ConfigFile()
+                        strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src']
+                        for pkgName in pkgConfigList:
+                            if pkgName.endswith(tuple(strings_pattern_end)):
+                                index = pkgName.rindex('-')
+                                string_pattern = pkgName[index+1:]
+                                for Type in pkgTypeList:
+                                    if Type.name == string_pattern:
+                                        Type.status = True
+                                strings_pattern_end.remove("-" + string_pattern)
+
                     (result, pkgTypeList) = PKGTypeSelectWindowCtrl(self.screen, pkgTypeList)
                     if result == "b":
                         # back
