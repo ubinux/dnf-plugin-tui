@@ -347,6 +347,19 @@ class TuiCommand(commands.Command):
             f.write(line + '\n')
         f.close()
 
+    def Confirm_ConfigFile(self):
+        result = ""
+        if self.install_type == ACTION_INSTALL:
+            self.CONFIG_FILE = ".config"
+            (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
+                                            False, \
+                                            "  Package List File  ", \
+                                            "Enter the name of package list file you wish to save:", \
+                                            self.CONFIG_FILE )
+        if result == "cancel":
+            # save config file
+            self.SAVE = False
+
     def Read_Samples(self):
         sample_list = []
         if os.path.isdir(SAMPLE):
@@ -687,17 +700,6 @@ class TuiCommand(commands.Command):
                 # Process function
                 # ==============================
                 elif stage == STAGE_PROCESS:
-                    if self.install_type == ACTION_INSTALL:
-                        self.CONFIG_FILE = ".config"
-                        (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
-                                                      False, \
-                                                      "  Package List File  ", \
-                                                      "Enter the name of package list file you wish to save:", \
-                                                      self.CONFIG_FILE )
-                    if result == "cancel":
-                        # save config file
-                        self.SAVE = False
-
                     if self.install_type == ACTION_GET_SOURCE or self.install_type == ACTION_GET_SPDX:
                         self.GET_SOURCE_or_SPDX(selected_pkgs)
                         break
@@ -718,12 +720,6 @@ class TuiCommand(commands.Command):
                             self.run_dnf_command(s_line)
 
                         if self.install_type == ACTION_INSTALL:
-                            if self.SAVE == True:
-                                self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
-                                #selected_pkgs_spec
-                                if selected_pkgs_spec:
-                                    self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
- 
                             for pkg in selected_pkgs_spec:
                                 s_line = ["install", pkg.name]
                                 self.run_dnf_command(s_line)
@@ -743,6 +739,13 @@ class TuiCommand(commands.Command):
                                 hkey = HotkeyExitWindow(self.screen, confirm_type)
  
                                 if hkey == "y":
+                                    self.Confirm_ConfigFile()
+                                    if self.install_type == ACTION_INSTALL:
+                                        if self.SAVE == True:
+                                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                                            #selected_pkgs_spec
+                                            if selected_pkgs_spec:
+                                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
                                     if self.screen != None:
                                         StopHotkeyScreen(self.screen)
                                         self.screen = None
@@ -761,6 +764,13 @@ class TuiCommand(commands.Command):
                                 hkey = HotkeyExitWindow(self.screen, confirm_type)
  
                                 if hkey == "y":
+                                    self.Confirm_ConfigFile()
+                                    if self.install_type == ACTION_INSTALL:
+                                        if self.SAVE == True:
+                                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                                            #selected_pkgs_spec
+                                            if selected_pkgs_spec:
+                                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
                                     if self.screen != None:
                                         StopHotkeyScreen(self.screen)
                                         self.screen = None
@@ -769,6 +779,13 @@ class TuiCommand(commands.Command):
                                     break
 
                         else:
+                            self.Confirm_ConfigFile()
+                            if self.install_type == ACTION_INSTALL:
+                                if self.SAVE == True:
+                                    self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                                    #selected_pkgs_spec
+                                    if selected_pkgs_spec:
+                                        self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
                             if self.screen != None:
                                 StopHotkeyScreen(self.screen)
                                 self.screen = None
