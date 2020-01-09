@@ -725,8 +725,12 @@ class TuiCommand(commands.Command):
                                 self.run_dnf_command(s_line)
 
                         if self.no_gpl3:
-                            #obtain the transaction
-                            self.base.resolve(self.cli.demands.allow_erasing)
+                            try:
+                                #obtain the transaction
+                                self.base.resolve(self.cli.demands.allow_erasing)
+                            except Exception as e:
+                                #do not handle conflict exceptions here
+                                pass
                             #obtain the deps of selected pkgs
                             install_set = self.base.transaction.install_set
 
