@@ -276,7 +276,7 @@ class TuiCommand(commands.Command):
 #            sys.exit(0)
 
     def PKG_filter(self, packages):
-        strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
+        strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic')
         notype_pkgs = packages
         for pkg in packages:
             if "-locale-" in pkg.name:
@@ -418,6 +418,8 @@ class TuiCommand(commands.Command):
                 pkgTypeList.append(pkgType_ptest)
                 pkgType_src = pkgType("src", False, "If select, you can see/select *-src packages in the next step.")
                 pkgTypeList.append(pkgType_src)
+                pkgType_lic = pkgType("lic", False, "If select, you can see/select *-lic packages in the next step.")
+                pkgTypeList.append(pkgType_lic)
 
                 return pkgTypeList
 
@@ -618,7 +620,7 @@ class TuiCommand(commands.Command):
                     if custom_type == RECORD_INSTALL:
                         # get packagelist from .config
                         pkgConfigList = self.Read_ConfigFile()
-                        strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src']
+                        strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic']
                         for pkgName in pkgConfigList:
                             if pkgName.endswith(tuple(strings_pattern_end)):
                                 index = pkgName.rindex('-')
@@ -846,8 +848,8 @@ class TuiCommand(commands.Command):
                 Type_status = True
 
         if Type_status:
-            #Don't show dev, doc, dbg, src, staticdev, doc and ptest packages
-            strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
+            #Don't show dev, doc, dbg, src, staticdev, doc, lic and ptest packages
+            strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic')
             for pkg in packages:
                 if "-locale-" in pkg.name and not pkgType_dic["locale"]:
                     display_pkgs.remove(pkg)
@@ -961,7 +963,7 @@ class TuiCommand(commands.Command):
         else:
             # Filter the type pkg such as -dev (Round1)
             if self.install_type == ACTION_INSTALL:
-                strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src')
+                strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic')
                 for pkg in packages:
                     if "-locale-" in pkg.name:
                         display_pkgs.remove(pkg)

@@ -1263,6 +1263,7 @@ def PKGINSTPackageSearchWindow(insScreen):
 #      "static"    True/False : install/not install *-staticdev package
 #      "ptest"    True/False : install/not install *-ptest package
 #      "src"    True/False : install/not install *-src package
+#      "lic"    True/False : install/not install *-lic package
 # Output:
 #   pkgTypeList   : select result
 #------------------------------------------------------------
