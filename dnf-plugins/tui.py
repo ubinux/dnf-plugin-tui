@@ -92,6 +92,18 @@ ATTENTON_NONE           = 0
 ATTENTON_HAVE_UPGRADE   = 1
 ATTENTON_NONE_UPGRADE   = 2
 
+STAGE_INSTALL_TYPE = 1
+STAGE_CUSTOM_TYPE = 2
+STAGE_RECORD_INSTALL = 3
+STAGE_SAMPLE_INSTALL = 4
+STAGE_PKG_TYPE = 5
+STAGE_CUST_LIC = 6
+STAGE_PACKAGE = 7
+STAGE_PACKAGE_SPEC = 8
+STAGE_PROCESS = 9
+STAGE_GROUP = 10
+STAGE_IMAGE_TYPE = 11
+
 if "OECORE_NATIVE_SYSROOT" in os.environ:
     NATIVE_SYSROOT = os.environ["OECORE_NATIVE_SYSROOT"]
 else:
@@ -372,20 +384,333 @@ class TuiCommand(commands.Command):
         else:
             return (False, "There is no sample files")
 
-    def PKGINSTDispMain(self):
-        STAGE_INSTALL_TYPE = 1
-        STAGE_CUSTOM_TYPE = 2
-        STAGE_RECORD_INSTALL = 3
-        STAGE_SAMPLE_INSTALL = 4
-        STAGE_PKG_TYPE = 5
-        STAGE_CUST_LIC = 6
-        STAGE_PACKAGE = 7
-        STAGE_PACKAGE_SPEC = 8
-        STAGE_PROCESS = 9
-        STAGE_GROUP = 10
-        STAGE_IMAGE_TYPE = 11
+    def installDisp(self, selected_pkgs, selected_pkgs_spec, pkgs_spec):
+        self.install_type = PKGINSTActionWindowCtrl(self.screen, Install_actions, self.install_type)
 
+        if self.install_type == ACTION_INSTALL:
+            stage = STAGE_CUSTOM_TYPE
+            return (stage, selected_pkgs, selected_pkgs_spec, pkgs_spec)
+        elif self.install_type == ACTION_MAKE_IMG:
+            stage = STAGE_IMAGE_TYPE
+        else:
+            stage = STAGE_PACKAGE
+
+        self.group_botton = False
+        return (stage, [], [], [])
+
+    def customDisp(self):
+        sample_type = 0
+        (result, custom_type) = PKGCUSActionWindowCtrl(self.screen, Custom_actions, self.install_type)
+
+        # Read comps information
+        self.base.read_comps(arch_filter=True)
+        self.grps = self.base.comps.groups
+        if self.grps:
+            self.group_flag = True # Has group info
+            self.group_botton = False #hotkey F6 hasn't been pressed
+
+        if result == "b":
+            # back
+            stage = STAGE_INSTALL_TYPE
+            return (stage, sample_type, custom_type)
+
+        if custom_type == NEW_INSTALL:
+            stage = STAGE_PACKAGE
+            result = HotkeyExitWindow(self.screen, confirm_type=CONFIRM_LICENSE)
+            if result == "y":
+                self.no_gpl3 = False
+            else:
+                self.no_gpl3 = True
+
+        # Load Package list install
+        elif custom_type == RECORD_INSTALL:
+            stage = STAGE_RECORD_INSTALL
+            self.no_gpl3 = False
+            # Load Sample to install
+        elif custom_type >= SAMPLE_INSTALL:
+            sample_type = custom_type-2
+            custom_type = SAMPLE_INSTALL
+            stage = STAGE_SAMPLE_INSTALL
+            self.no_gpl3 = False
+        return (stage, sample_type, custom_type)
+    
+    def recordDisp(self):
+        (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
+                                                      True, \
+                                                      "  Package List File  ", \
+                                                      "Enter the name of package list file you wish to load:", \
+                                                      self.CONFIG_FILE )
+
+        if result == "cancel":
+            # back
+            stage = STAGE_CUSTOM_TYPE
+
+        else:
+            # next
+            stage = STAGE_PACKAGE
+        return stage
+
+    def sampleDisp(self, sample_list, sample_type):
+        config_file = SAMPLE + '/' + sample_list[sample_type][2]
+        try:
+            f = open(config_file, "r")
+        except Exception as e:
+            logger.error(_("%s."), e)
+            StopHotkeyScreen(self.screen)
+            self.screen = None
+            sys.exit(0)
+        self.CONFIG_FILE = config_file
+        stage = STAGE_PACKAGE
+        return stage
+
+    def groupDisp(self): 
+        group_list = []
+        pkg_group = []
+        for grp in self.grps:
+            group = (grp.ui_name, grp.ui_description, grp.mandatory_packages)
+            group_list.append(group)
+                    
+        # Show group list
+        (result, group_id) = PKGCUSActionWindowCtrl(self.screen, group_list, self.install_type, True)
+
+        if result == "b":
+            # back
+            stage = STAGE_CUSTOM_TYPE
+
+        elif result == "g":
+            # Back to non-group
+            self.group_botton = False
+            stage = STAGE_PACKAGE
+
+        # Enter in group
+        else:
+            pkg_group = group_list[group_id][2]
+            stage = STAGE_PACKAGE
+        return  (stage, result, pkg_group)
+
+    def packageDisp(self, selected_pkgs, custom_type, pkg_group):
+        confirm_type = ""
+        stage = STAGE_PACKAGE
+        if self.install_type == ACTION_INSTALL:
+            # Show hotkey F6 in package selection interface
+            if self.group_botton == False:
+                (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, None, selected_pkgs, custom_type, pkg_group=[], group_hotkey=True)
+
+            else:
+                # Enter group interface
+                (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, None, selected_pkgs, custom_type, pkg_group, group_hotkey=False)
+
+        else:
+            (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, None, selected_pkgs, custom_type)
+
+        if result == "b":
+            # back
+            if self.install_type == ACTION_INSTALL:
+                stage = STAGE_CUSTOM_TYPE
+            else:
+                stage = STAGE_INSTALL_TYPE
+                self.no_gpl3 = False
+
+            if self.group_botton == True:
+                stage = STAGE_GROUP
+            return  (stage, result, selected_pkgs, pkgs_spec, cancel_pkgs, confirm_type)
+
+        if result == "g":
+            if self.group_flag == True and self.install_type == ACTION_INSTALL:
+                # Switch between group and simple
+                self.group_botton = True
+                stage = STAGE_GROUP
+                return  (stage, result, selected_pkgs, pkgs_spec, cancel_pkgs, confirm_type)
+
+        elif result == "n":
+            if self.install_type == ACTION_INSTALL:
+                stage = STAGE_PKG_TYPE
+            else:
+                #confirm if or not continue process function
+                install_type_switch = {ACTION_REMOVE: CONFIRM_REMOVE, \
+                                    ACTION_UPGRADE: CONFIRM_UPGRADE, \
+                                    ACTION_GET_PKG: CONFIRM_GET_PKG, \
+                                    ACTION_GET_SOURCE: CONFIRM_GET_SOURCE, \
+                                    ACTION_GET_SPDX: CONFIRM_GET_SPDX, \
+                                    ACTION_GET_ALL: CONFIRM_GET_ALL}
+                confirm_type = install_type_switch.get(self.install_type)
+
+                hkey = HotkeyExitWindow(self.screen, confirm_type)
+                if hkey == "y":
+                    stage = STAGE_PROCESS
+                elif hkey == "n":
+                    stage = STAGE_PACKAGE
+        return  (stage, result, selected_pkgs, pkgs_spec, cancel_pkgs, confirm_type)
+
+    def pkgTypeDisp(self, custom_type, pkgTypeList):
+        if custom_type == RECORD_INSTALL:
+            # get packagelist from .config
+            pkgConfigList = self.Read_ConfigFile()
+            strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic']
+            for pkgName in pkgConfigList:
+                if pkgName.endswith(tuple(strings_pattern_end)):
+                    index = pkgName.rindex('-')
+                    string_pattern = pkgName[index+1:]
+                    for Type in pkgTypeList:
+                        if Type.name == string_pattern:
+                            Type.status = True
+                    strings_pattern_end.remove("-" + string_pattern)
+
+        (result, pkgTypeList) = PKGTypeSelectWindowCtrl(self.screen, pkgTypeList)
+        if result == "b":
+            # back
+            stage = STAGE_PACKAGE
+        elif result == "n":
+            stage = STAGE_PACKAGE_SPEC
+        return (stage, pkgTypeList)
+
+    def packageSpecDisp(self, pkgTypeList, pkgs_spec, selected_pkgs_spec, custom_type, selected_pkgs):
+        (result, selected_pkgs_spec, pkgs_temp, cancel_pkgs) = self.PKGINSTWindowCtrl(pkgTypeList, pkgs_spec, selected_pkgs_spec, custom_type, conflict_attach_pkgs=selected_pkgs)
+        if result == "b":
+            # back
+            stage = STAGE_PKG_TYPE
+        elif result == "n":
+            stage = STAGE_PROCESS
+        return (stage, selected_pkgs_spec, selected_pkgs, cancel_pkgs)
+
+    def imageTypeDisp(self, Image_types):
+        state = 0
+        while state < 3:
+            # Select Image Type
+            if state == 0:
+                (result, self.image_type) = PKGCUSActionWindowCtrl(self.screen, Image_types, self.image_type, title="Select Image type")
+                if result == "b":
+                    # back
+                    stage = STAGE_INSTALL_TYPE
+                    break
+
+                insMKIMGInfo = MKIMGInfo(self.image_type)
+
+            # Setup Configuration
+            elif state == 1:
+                #Press ENTER, you can call the corresponding make image function
+                rcode = Image_type_functions[self.image_type][0](self.screen, insMKIMGInfo)
+                #retrun button of MKIMGxxxWindowCtrl
+                if rcode == "b":
+                    # back
+                    state = 0
+                    continue
+
+            # Confirm
+            elif state == 2:
+                # Make Image file name
+                if os.path.isdir(insMKIMGInfo.get_to_dir_path()):
+                    insMKIMGInfo.set_image_file_name(Image_type_name[self.image_type])
+                else:
+                # If you give the abspath of img_patch, no need to set the img_name
+                    (to_dir, img_name) = os.path.split(insMKIMGInfo.get_to_dir_path())
+                    insMKIMGInfo.set_to_dir_path(to_dir)
+                    insMKIMGInfo.set_image_file_name(img_name)
+
+                # information confirm function
+                rcode = Image_type_functions[self.image_type][1](self.screen, insMKIMGInfo)
+                if rcode == "b":
+                    state = 1
+                    continue
+
+            state = state + 1
+        return stage
+
+    def processDisp(self, selected_pkgs, selected_pkgs_spec, cancel_pkgs, confirm_type):
+        stage = STAGE_PROCESS
+        if self.install_type == ACTION_GET_SOURCE or self.install_type == ACTION_GET_SPDX:
+            self.GET_SOURCE_or_SPDX(selected_pkgs)
+            return ("b", stage)
+        if self.install_type == ACTION_GET_PKG:
+            self.GET_RKG(selected_pkgs)
+            return ("b", stage)
+        if self.install_type == ACTION_GET_ALL:
+            self.GET_ALL(selected_pkgs)
+            return ("b", stage)
+        else:
+            for cancel_pkg in cancel_pkgs:
+                if cancel_pkg in selected_pkgs:
+                    selected_pkgs.remove(cancel_pkg)
+                if cancel_pkg in selected_pkgs_spec:
+                    selected_pkgs_spec.remove(cancel_pkg)
+            for pkg in selected_pkgs:           #selected_pkgs
+                if self.install_type == ACTION_INSTALL:
+                    s_line = ["install", pkg.name]
+                elif self.install_type == ACTION_REMOVE:
+                    s_line = ["remove", pkg.name]
+                elif self.install_type == ACTION_UPGRADE:
+                    s_line = ["upgrade", pkg.name]
+                self.run_dnf_command(s_line)
+
+            if self.install_type == ACTION_INSTALL:
+                for pkg in selected_pkgs_spec:
+                    s_line = ["install", pkg.name]
+                    self.run_dnf_command(s_line)
+
+            if self.no_gpl3:
+                try:
+                    #obtain the transaction
+                    self.base.resolve(self.cli.demands.allow_erasing)
+                except Exception as e:
+                    #do not handle conflict exceptions here
+                    pass
+                #obtain the deps of selected pkgs
+                install_set = self.base.transaction.install_set
+
+                result = self.showChangeSet(install_set)
+                #continue to install
+                if result == "y" or result == "n":
+                    if self.install_type == ACTION_INSTALL:
+                        confirm_type = CONFIRM_INSTALL
+
+                    hkey = HotkeyExitWindow(self.screen, confirm_type)
+ 
+                    if hkey == "y":
+                        self.Confirm_ConfigFile()
+                        if self.install_type == ACTION_INSTALL:
+                            if self.SAVE == True:
+                                self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                                #selected_pkgs_spec
+                                if selected_pkgs_spec:
+                                    self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
+                        if self.screen != None:
+                            StopHotkeyScreen(self.screen)
+                            self.screen = None
+                        if self.install_type != ACTION_REMOVE:
+                            self.base.conf.assumeyes = True
+                        return ("b", stage)
+                    elif hkey == "n":
+                        stage = STAGE_PKG_TYPE
+                #don't want to install GPLv3 that depended by others
+                elif result == "b":
+                    stage = STAGE_PKG_TYPE
+            else:
+                self.Confirm_ConfigFile()
+ 
+                if self.install_type == ACTION_INSTALL:
+                    confirm_type = CONFIRM_INSTALL
+                    hkey = HotkeyExitWindow(self.screen, confirm_type)
+                    if hkey == "y":
+                        if self.SAVE == True:
+                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                            #selected_pkgs_spec
+                            if selected_pkgs_spec:
+                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
+                    elif hkey == "n":
+                        stage = STAGE_PKG_TYPE
+                        return (" ", stage)
+                if self.screen != None:
+                    StopHotkeyScreen(self.screen)
+                    self.screen = None
+                    if self.install_type != ACTION_REMOVE:
+                        self.base.conf.assumeyes = True
+                return ("b", stage)
+
+        return (" ", stage)
+
+    def PKGINSTDispMain(self):
         custom_type = NEW_INSTALL
+        pkg_group = []
         #----returnPkgLists function of dnf------
         try:
             ypl = self.base.returnPkgLists(
@@ -438,385 +763,69 @@ class TuiCommand(commands.Command):
                 # select install type
                 #==============================
                 if stage == STAGE_INSTALL_TYPE:
-                    self.install_type = PKGINSTActionWindowCtrl(self.screen, Install_actions, self.install_type)
-
-                    if self.install_type == ACTION_INSTALL:
-                        stage = STAGE_CUSTOM_TYPE
+                    (stage, selected_pkgs, selected_pkgs_spec, pkgs_spec) = self.installDisp(selected_pkgs, selected_pkgs_spec, pkgs_spec)
+                    if stage == STAGE_CUSTOM_TYPE:
                         continue
-                    elif self.install_type == ACTION_MAKE_IMG:
-                        stage = STAGE_IMAGE_TYPE
-                    else:
-                        stage = STAGE_PACKAGE
-
-                    selected_pkgs = []
-                    selected_pkgs_spec = []
-                    pkgs_spec = []
-                    self.group_botton = False
-
                 # ==============================
                 # custom type
                 # ==============================
                 elif stage == STAGE_CUSTOM_TYPE:
-                    (result, custom_type) = PKGCUSActionWindowCtrl(self.screen, Custom_actions, self.install_type)
-
-                    # Read comps information
-                    self.base.read_comps(arch_filter=True)
-                    self.grps = self.base.comps.groups
-                    if self.grps:
-                        self.group_flag = True # Has group info
-                        self.group_botton = False #hotkey F6 hasn't been pressed
-
-                    if result == "b":
-                        # back
-                        stage = STAGE_INSTALL_TYPE
+                    (stage, sample_type, custom_type) = self.customDisp()
+                    if stage == STAGE_INSTALL_TYPE:
                         continue
-
-                    if custom_type == NEW_INSTALL:
-                        stage = STAGE_PACKAGE
-                        result = HotkeyExitWindow(self.screen, confirm_type=CONFIRM_LICENSE)
-                        if result == "y":
-                            self.no_gpl3 = False
-                        else:
-                            self.no_gpl3 = True
-
-                    # Load Package list install
-                    elif custom_type == RECORD_INSTALL:
-                        stage = STAGE_RECORD_INSTALL
-                        self.no_gpl3 = False
-                    # Load Sample to install
-                    elif custom_type >= SAMPLE_INSTALL:
-                        sample_type = custom_type-2
-                        custom_type = SAMPLE_INSTALL
-                        stage = STAGE_SAMPLE_INSTALL
-                        self.no_gpl3 = False
-
                 # ==============================
                 # record install
                 # ==============================
                 # Load Package list to install
                 elif stage == STAGE_RECORD_INSTALL:
-
-                    (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
-                                                      True, \
-                                                      "  Package List File  ", \
-                                                      "Enter the name of package list file you wish to load:", \
-                                                      self.CONFIG_FILE )
-
-                    if result == "cancel":
-                        # back
-                        stage = STAGE_CUSTOM_TYPE
+                    stage = self.recordDisp()
+                    if stage == STAGE_CUSTOM_TYPE:
                         continue
-
-                    else:
-                        # next
-                        stage = STAGE_PACKAGE
-
                 # ==============================
                 # sample install
                 # ==============================
                 elif stage == STAGE_SAMPLE_INSTALL:
-                    config_file = SAMPLE + '/' + sample_list[sample_type][2]
-                    try:
-                        f = open(config_file, "r")
-                    except Exception as e:
-                        logger.error(_("%s."), e)
-                        StopHotkeyScreen(self.screen)
-                        self.screen = None
-                        sys.exit(0)
-                    self.CONFIG_FILE = config_file
-                    stage = STAGE_PACKAGE
-
+                    stage = self.sampleDisp(sample_list, sample_type)
                 #==============================
                 # Grouplist 
                 #==============================
                 elif stage == STAGE_GROUP:
-                    group_list = []
-                    for grp in self.grps:
-                        group = (grp.ui_name, grp.ui_description, grp.mandatory_packages)
-                        group_list.append(group)
-                    
-                    # Show group list
-                    (result, group_id) = PKGCUSActionWindowCtrl(self.screen, group_list, self.install_type, True)
-
-                    if result == "b":
-                        # back
-                        stage = STAGE_CUSTOM_TYPE
+                    (stage, result, pkg_group) = self.groupDisp()
+                    if result == "b" or result == "g":
                         continue
-
-                    elif result == "g":
-                        # Back to non-group
-                        self.group_botton = False
-                        stage = STAGE_PACKAGE
-                        continue
-
-                    # Enter in group
-                    else:
-                        pkg_group = group_list[group_id][2]
-                        stage = STAGE_PACKAGE
-
-
                 #==============================
                 # select package
                 #==============================
                 elif stage == STAGE_PACKAGE:
-                    if self.install_type == ACTION_INSTALL:
-                        # Show hotkey F6 in package selection interface
-                        if self.group_botton == False:
-                            (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
-                                                                                None, selected_pkgs, custom_type, pkg_group=[], group_hotkey=True)
-
-                        else:
-                            # Enter group interface
-                            (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
-                                                                                None, selected_pkgs, custom_type, pkg_group, group_hotkey=False)
-
-                    else:
-                        (result, selected_pkgs, pkgs_spec, cancel_pkgs) = self.PKGINSTWindowCtrl(None, \
-                                                                                None, selected_pkgs, custom_type)
-
-
+                    (stage, result, selected_pkgs, pkgs_spec, cancel_pkgs, confirm_type) = self.packageDisp(selected_pkgs, custom_type, pkg_group)
                     if result == "b":
-                        # back
-                        if self.install_type == ACTION_INSTALL:
-                            stage = STAGE_CUSTOM_TYPE
-                        else:
-                            stage = STAGE_INSTALL_TYPE
-                            self.no_gpl3 = False
-
-                        if self.group_botton == True:
-                            stage = STAGE_GROUP
                         continue
-
                     if result == "g":
                         if self.group_flag == True and self.install_type == ACTION_INSTALL:
-                            # Switch between group and simple
-                            self.group_botton = True
-                            stage = STAGE_GROUP
                             continue
-
-                    elif result == "n":
-                        if self.install_type == ACTION_INSTALL:
-                            stage = STAGE_PKG_TYPE
-                        else:
-                            #confirm if or not continue process function
-                            install_type_switch = {ACTION_REMOVE: CONFIRM_REMOVE, \
-                                                   ACTION_UPGRADE: CONFIRM_UPGRADE, \
-                                                   ACTION_GET_PKG: CONFIRM_GET_PKG, \
-                                                   ACTION_GET_SOURCE: CONFIRM_GET_SOURCE, \
-                                                   ACTION_GET_SPDX: CONFIRM_GET_SPDX, \
-                                                   ACTION_GET_ALL: CONFIRM_GET_ALL}
-                            confirm_type = install_type_switch.get(self.install_type)
-
-                            hkey = HotkeyExitWindow(self.screen, confirm_type)
-                            if hkey == "y":
-                                stage = STAGE_PROCESS
-                            elif hkey == "n":
-                                stage = STAGE_PACKAGE
-
                 #==============================
                 # select package type
                 #==============================
                 elif stage == STAGE_PKG_TYPE:
-                    if custom_type == RECORD_INSTALL:
-                        # get packagelist from .config
-                        pkgConfigList = self.Read_ConfigFile()
-                        strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic']
-                        for pkgName in pkgConfigList:
-                            if pkgName.endswith(tuple(strings_pattern_end)):
-                                index = pkgName.rindex('-')
-                                string_pattern = pkgName[index+1:]
-                                for Type in pkgTypeList:
-                                    if Type.name == string_pattern:
-                                        Type.status = True
-                                strings_pattern_end.remove("-" + string_pattern)
-
-                    (result, pkgTypeList) = PKGTypeSelectWindowCtrl(self.screen, pkgTypeList)
-                    if result == "b":
-                        # back
-                        stage = STAGE_PACKAGE
-                    elif result == "n":
-                        stage = STAGE_PACKAGE_SPEC
-
+                    (stage, pkgTypeList) = self.pkgTypeDisp(custom_type, pkgTypeList)
                 #==============================
                 # select special packages(local, dev, dbg, doc, src)
                 #==============================
                 elif stage == STAGE_PACKAGE_SPEC:
-                    (result, selected_pkgs_spec, pkgs_temp, cancel_pkgs) = self.PKGINSTWindowCtrl(pkgTypeList, \
-                                                                                pkgs_spec, selected_pkgs_spec, custom_type, conflict_attach_pkgs=selected_pkgs)
-                    if result == "b":
-                        # back
-                        stage = STAGE_PKG_TYPE
-                    elif result == "k":
-                        stage = STAGE_PKG_TYPE
-                    elif result == "n":
-                        stage = STAGE_PROCESS
-                        for cancel_pkg in cancel_pkgs:
-                            if cancel_pkg in selected_pkgs:
-                                selected_pkgs.remove(cancel_pkg)
-                            if cancel_pkg in selected_pkgs_spec:
-                                selected_pkgs_spec.remove(cancel_pkg)
-
-
+                    (stage, selected_pkgs_spec, selected_pkgs, cancel_pkgs) = self.packageSpecDisp(pkgTypeList, pkgs_spec, selected_pkgs_spec, custom_type, selected_pkgs)
                 # ==============================
                 # Select image type
                 # ==============================
                 elif stage == STAGE_IMAGE_TYPE:
-                    state = 0
-                    while state < 3:
-                        # Select Image Type
-                        if state == 0:
-                            (result, self.image_type) = PKGCUSActionWindowCtrl(self.screen, Image_types, self.image_type, title="Select Image type")
-                            if result == "b":
-                                # back
-                                stage = STAGE_INSTALL_TYPE
-                                break
-
-                            insMKIMGInfo = MKIMGInfo(self.image_type)
-
-                        # Setup Configuration
-                        elif state == 1:
-                            #Press ENTER, you can call the corresponding make image function
-                            rcode = Image_type_functions[self.image_type][0](self.screen, insMKIMGInfo)
-                            #retrun button of MKIMGxxxWindowCtrl
-                            if rcode == "b":
-                                # back
-                                state = 0
-                                continue
-
-                        # Confirm
-                        elif state == 2:
-                            # Make Image file name
-                            if os.path.isdir(insMKIMGInfo.get_to_dir_path()):
-                                insMKIMGInfo.set_image_file_name(Image_type_name[self.image_type])
-                            else:
-                            # If you give the abspath of img_patch, no need to set the img_name
-                                (to_dir, img_name) = os.path.split(insMKIMGInfo.get_to_dir_path())
-                                insMKIMGInfo.set_to_dir_path(to_dir)
-                                insMKIMGInfo.set_image_file_name(img_name)
-
-                            # information confirm function
-                            rcode = Image_type_functions[self.image_type][1](self.screen, insMKIMGInfo)
-                            if rcode == "b":
-                                state = 1
-                                continue
-
-                        state = state + 1
-
+                    stage = self.imageTypeDisp(Image_types)
                     continue
-
                 # ==============================
                 # Process function
                 # ==============================
                 elif stage == STAGE_PROCESS:
-                    if self.install_type == ACTION_GET_SOURCE or self.install_type == ACTION_GET_SPDX:
-                        self.GET_SOURCE_or_SPDX(selected_pkgs)
+                    (result, stage) = self.processDisp(selected_pkgs, selected_pkgs_spec, cancel_pkgs, confirm_type)
+                    if result == "b":
                         break
-                    if self.install_type == ACTION_GET_PKG:
-                        self.GET_RKG(selected_pkgs)
-                        break
-                    if self.install_type == ACTION_GET_ALL:
-                        self.GET_ALL(selected_pkgs)
-                        break
-                    else:
-                        if self.no_gpl3:
-                            conflicts = conflictDetection(self.base, selected_pkgs, selected_pkgs_spec)
-                            if conflicts != []:
-                                (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
-                                if hkey == "b":
-                                    stage = STAGE_PACKAGE
-                                    break
-                                if hkey == "n":
-                                    for cancel_pkg in cancel_pkgs:
-                                        if cancel_pkg in selected_pkgs:
-                                            selected_pkgs.remove(cancel_pkg)
-                                        if cancel_pkg in selected_pkgs_spec:
-                                            selected_pkgs_spec.remove(cancel_pkg)
-                        for pkg in selected_pkgs:           #selected_pkgs
-                            if self.install_type == ACTION_INSTALL:
-                                s_line = ["install", pkg.name]
-                            elif self.install_type == ACTION_REMOVE:
-                                s_line = ["remove", pkg.name]
-                            elif self.install_type == ACTION_UPGRADE:
-                                s_line = ["upgrade", pkg.name]
-                            self.run_dnf_command(s_line)
-
-                        if self.install_type == ACTION_INSTALL:
-                            for pkg in selected_pkgs_spec:
-                                s_line = ["install", pkg.name]
-                                self.run_dnf_command(s_line)
-
-                        if self.no_gpl3:
-                            try:
-                                #obtain the transaction
-                                self.base.resolve(self.cli.demands.allow_erasing)
-                            except Exception as e:
-                                #do not handle conflict exceptions here
-                                pass
-                            #obtain the deps of selected pkgs
-                            install_set = self.base.transaction.install_set
-
-                            result = self.showChangeSet(install_set)
-                            #continue to install
-                            if result == "y":
-                                if self.install_type == ACTION_INSTALL:
-                                    confirm_type = CONFIRM_INSTALL
-
-                                hkey = HotkeyExitWindow(self.screen, confirm_type)
- 
-                                if hkey == "y":
-                                    self.Confirm_ConfigFile()
-                                    if self.install_type == ACTION_INSTALL:
-                                        if self.SAVE == True:
-                                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
-                                            #selected_pkgs_spec
-                                            if selected_pkgs_spec:
-                                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
-                                    if self.screen != None:
-                                        StopHotkeyScreen(self.screen)
-                                        self.screen = None
-                                    if self.install_type != ACTION_REMOVE:
-                                        self.base.conf.assumeyes = True
-                                    break
-                                elif hkey == "n":
-                                    stage = STAGE_PKG_TYPE
-                            #don't want to install GPLv3 that depended by others
-                            elif result == "b":
-                                stage = STAGE_PKG_TYPE
-                            elif result == "n":
-                                if self.install_type == ACTION_INSTALL:
-                                    confirm_type = CONFIRM_INSTALL
-
-                                hkey = HotkeyExitWindow(self.screen, confirm_type)
- 
-                                if hkey == "y":
-                                    self.Confirm_ConfigFile()
-                                    if self.install_type == ACTION_INSTALL:
-                                        if self.SAVE == True:
-                                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
-                                            #selected_pkgs_spec
-                                            if selected_pkgs_spec:
-                                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
-                                    if self.screen != None:
-                                        StopHotkeyScreen(self.screen)
-                                        self.screen = None
-                                    if self.install_type != ACTION_REMOVE:
-                                        self.base.conf.assumeyes = True
-                                    break
-
-                        else:
-                            self.Confirm_ConfigFile()
-                            if self.install_type == ACTION_INSTALL:
-                                if self.SAVE == True:
-                                    self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
-                                    #selected_pkgs_spec
-                                    if selected_pkgs_spec:
-                                        self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
-                            if self.screen != None:
-                                StopHotkeyScreen(self.screen)
-                                self.screen = None
-                                if self.install_type != ACTION_REMOVE:
-                                    self.base.conf.assumeyes = True
-                            break
 
             if self.screen != None:
                 StopHotkeyScreen(self.screen)
@@ -938,28 +947,20 @@ class TuiCommand(commands.Command):
 
             # No special type pkg selected
             if len(display_pkgs) == 0:
-                if not self.no_gpl3:
-                    if self.install_type == ACTION_INSTALL:
-                        conflicts = conflictDetection(self.base, conflict_attach_pkgs)
-                        if conflicts != []:
-                            (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
-                            if hkey == "b":
-                                return ("b", selected_pkgs, packages, cancel_pkgs)
+                if self.install_type == ACTION_INSTALL:
+                    conflicts = conflictDetection(self.base, conflict_attach_pkgs)
+                    if conflicts != []:
+                        (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
+                        if hkey == "b":
+                            return ("b", selected_pkgs, packages, cancel_pkgs)
 
-                        confirm_type = CONFIRM_INSTALL
-                        hkey = HotkeyExitWindow(self.screen, confirm_type)
-                        if custom_type >= RECORD_INSTALL:
-                            selected_pkgs = []
-                            selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
-                        if hkey == "y":
-                            return ("n", selected_pkgs, packages, cancel_pkgs)
-                        elif hkey == "n":
-                            return ("k", selected_pkgs, packages, cancel_pkgs)
-                    else:
-                        hkey=HotkeyAttentionWindow(self.screen,ATTENTON_NONE)
-                        return ("b", selected_pkgs, packages, cancel_pkgs)
+                    if custom_type >= RECORD_INSTALL:
+                        selected_pkgs = []
+                        selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
+                        return ("n", selected_pkgs, packages, cancel_pkgs)
                 else:
-                    return ("n", selected_pkgs, packages, cancel_pkgs)
+                    hkey=HotkeyAttentionWindow(self.screen,ATTENTON_NONE)
+                    return ("b", selected_pkgs, packages, cancel_pkgs)
         else:
             # Filter the type pkg such as -dev (Round1)
             if self.install_type == ACTION_INSTALL:
@@ -1058,21 +1059,13 @@ class TuiCommand(commands.Command):
                     return ("n", selected_pkgs, pkgs_spec, cancel_pkgs)
                 #if in special type packages(dev,doc,locale) select Interface:
                 else:
-                    if not self.no_gpl3:
-                        if self.install_type == ACTION_INSTALL : confirm_type = CONFIRM_INSTALL
-                        conflicts = conflictDetection(self.base, conflict_attach_pkgs,selected_pkgs)
-                        if conflicts != []:
-                            (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
-                            if hkey == "b":
-                                return ("b", selected_pkgs, packages, cancel_pkgs)
-
-                        hkey = HotkeyExitWindow(self.screen, confirm_type)
-                        if hkey == "y":
-                            return ("n", selected_pkgs, packages, cancel_pkgs)
-                        elif hkey == "n":
-                            stage = STAGE_SELECT
-                    else:
-                        return ("n", selected_pkgs, packages, cancel_pkgs)
+                    if self.install_type == ACTION_INSTALL : confirm_type = CONFIRM_INSTALL
+                    conflicts = conflictDetection(self.base, conflict_attach_pkgs,selected_pkgs)
+                    if conflicts != []:
+                        (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
+                        if hkey == "b":
+                            return ("b", selected_pkgs, packages, cancel_pkgs)
+                    return ("n", selected_pkgs, packages, cancel_pkgs)
             elif stage == STAGE_BACK:
                 if not search == None:
                     stage = STAGE_SELECT
