@@ -1304,14 +1304,6 @@ def PKGTypeSelectWindow(insScreen, pkgTypeList, position = 0):
         idx += 1
     # Set position
     num_type = len(pkgTypeList)
-    if num_type > 1:
-        if num_type <= iPosition:
-            iPosition = num_typr - 1
-        if  num_type > (iPosition + main_height / 2):
-            before_position = (iPosition + main_height / 2)
-        else:
-            before_position = num_type - 1
-    li.setCurrent(before_position)
     li.setCurrent(iPosition)
 
     t1 = snack.Textbox(main_width, 1, "-" * main_width)
