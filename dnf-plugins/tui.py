@@ -548,6 +548,10 @@ class TuiCommand(commands.Command):
             pkgConfigList = self.Read_ConfigFile()
             strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic']
             for pkgName in pkgConfigList:
+                if "-locale-" in pkgName or "-localedata-" in pkgName:
+                    for Type in pkgTypeList:
+                        if Type.name == "locale":
+                            Type.status = True
                 if pkgName.endswith(tuple(strings_pattern_end)):
                     index = pkgName.rindex('-')
                     string_pattern = pkgName[index+1:]
@@ -948,16 +952,18 @@ class TuiCommand(commands.Command):
             # No special type pkg selected
             if len(display_pkgs) == 0:
                 if self.install_type == ACTION_INSTALL:
+                    if custom_type >= RECORD_INSTALL:
+                        selected_pkgs = []
+                        selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
+                        return ("n", selected_pkgs, packages, cancel_pkgs)
                     conflicts = conflictDetection(self.base, conflict_attach_pkgs)
                     if conflicts != []:
                         (hkey, cancel_pkgs) = HotkeyConflictWindow(self.screen,conflicts)
                         if hkey == "b":
                             return ("b", selected_pkgs, packages, cancel_pkgs)
+                        if hkey == "n":
+                            return ("n", selected_pkgs, packages, cancel_pkgs)
 
-                    if custom_type >= RECORD_INSTALL:
-                        selected_pkgs = []
-                        selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
-                        return ("n", selected_pkgs, packages, cancel_pkgs)
                 else:
                     hkey=HotkeyAttentionWindow(self.screen,ATTENTON_NONE)
                     return ("b", selected_pkgs, packages, cancel_pkgs)

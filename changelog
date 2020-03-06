@@ -1,3 +1,9 @@
+2020/03/04:
+Release v1.1.
+1. Added conflict handling module.
+
+2. Optimize the code.
+
 2019/04/11:
 Release v1.0.
 
@@ -18,7 +24,6 @@ In default, save package list for installed packages in .config file.
 Don't save package list for installed packages with 'nosave' option.
 
 2019.01:
-
 1. Init version for tui plugin.
 
 2. Add --auto option.
