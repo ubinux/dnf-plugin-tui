@@ -104,7 +104,7 @@ Make sure you have prepared the following:
         ......
 ```
      
-#### (4) spdx files (https://github.com/dl9pf/meta-spdxscanner)
+#### (4) spdx files (https://git.yoctoproject.org/git/meta-spdxscanner)
 &emsp;&emsp;Please refer to the README of meta-spdxscanner to get spdx files produced by Yocto.
 ```
       # ls /home/test/workdir/dnf_test/spdx_repo
