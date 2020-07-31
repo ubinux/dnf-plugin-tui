@@ -346,6 +346,36 @@ After init, you can manage packages by tui or command line.
 	-  staticdev : Static compilation file
 	-  ptest : Python unit testing framework
 ```
+##### (4). Conflict resolve
+&emsp;&emsp;If you select conflicting packages, a dialog box will ask your decision.
+<br>&emsp;&emsp;You must select only one package or deselect per conflict.
+```
+        ┌──────────────────┤ Conflict error occured ├──────────────────┐
+        │                                                              │
+        │ the following package will conflict during installation:     │
+        │                                                              │
+        │ conflict 1:                                                  │
+        │ [ ] watchdog                                                 │
+        │ [ ] watchdog-keepalive                                       │
+        │                                                              │
+        │ conflict 2:                                                  │
+        │ [ ] wireless-regdb                                           │
+        │ [ ] wireless-regdb-static                                    │
+        │                                                              │
+        │                                                              │
+        │                                                              │
+        │ ------------------------------------------------------------ │
+        │                                                              │
+        │                   ┌────────┐      ┌────────┐                 │
+        │                   │  Next  │      │  Back  │                 │
+        │                   └────────┘      └────────┘                 │
+        │                                                              │
+        └──────────────────────────────────────────────────────────────┘
+```
+```
+       - Next : Proceed to the next screen.
+       - Back : Back to the previous screen.
+```
 ##### (4). Confirm install
 &emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
 <br>&emsp;&emsp;a dialog box will ask your decision.
