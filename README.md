@@ -376,7 +376,7 @@ After init, you can manage packages by tui or command line.
        - Next : Proceed to the next screen.
        - Back : Back to the previous screen.
 ```
-##### (4). Confirm install
+##### (5). Confirm install
 &emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
 <br>&emsp;&emsp;a dialog box will ask your decision.
 ```
@@ -401,7 +401,7 @@ After init, you can manage packages by tui or command line.
 	
 	F3:Next  F4:Back  F9:Exit
 ```
-##### (5). Load package file
+##### (6). Load package file
 &emsp;&emsp;After select "Load package file", when user enter the name of package list file and enter
 "OK", dnf tui will install the package which in the list.
 ```
@@ -420,7 +420,7 @@ After init, you can manage packages by tui or command line.
            └────────────────────────────────────────────────────────┘
 ```
 
-##### (6). Reference   
+##### (7). Reference   
 &emsp;&emsp;In "Select install type" interface, user can choose Reference1 to install busybox based root 
 file system or Reference2 to install systemd based root file system.
 ```
