@@ -346,7 +346,7 @@ After init, you can manage packages by tui or command line.
 	-  staticdev : Static compilation file
 	-  ptest : Python unit testing framework
 ```
-##### (4). Conflict resolve
+##### (4). Resolve conflict
 &emsp;&emsp;If you select conflicting packages, a dialog box will ask your decision.
 <br>&emsp;&emsp;You must select only one package or deselect per conflict.
 ```
@@ -376,7 +376,7 @@ After init, you can manage packages by tui or command line.
        - Next : Proceed to the next screen.
        - Back : Back to the previous screen.
 ```
-##### (5). Confirm install
+##### (5). Confirm Installation
 &emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
 <br>&emsp;&emsp;a dialog box will ask your decision.
 ```
