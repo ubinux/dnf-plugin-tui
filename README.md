@@ -346,7 +346,37 @@ After init, you can manage packages by tui or command line.
 	-  staticdev : Static compilation file
 	-  ptest : Python unit testing framework
 ```
-##### (4). Confirm install
+##### (4). Resolve conflict
+&emsp;&emsp;If you select conflicting packages, a dialog box will ask your decision.
+<br>&emsp;&emsp;You must select only one package or deselect per conflict.
+```
+        ┌──────────────────┤ Conflict error occured ├──────────────────┐
+        │                                                              │
+        │ the following package will conflict during installation:     │
+        │                                                              │
+        │ conflict 1:                                                  │
+        │ [ ] watchdog                                                 │
+        │ [ ] watchdog-keepalive                                       │
+        │                                                              │
+        │ conflict 2:                                                  │
+        │ [ ] wireless-regdb                                           │
+        │ [ ] wireless-regdb-static                                    │
+        │                                                              │
+        │                                                              │
+        │                                                              │
+        │ ------------------------------------------------------------ │
+        │                                                              │
+        │                   ┌────────┐      ┌────────┐                 │
+        │                   │  Next  │      │  Back  │                 │
+        │                   └────────┘      └────────┘                 │
+        │                                                              │
+        └──────────────────────────────────────────────────────────────┘
+```
+```
+       - Next : Proceed to the next screen.
+       - Back : Back to the previous screen.
+```
+##### (5). Confirm Installation
 &emsp;&emsp;If you select "No" in the "License" interface, but there are GPLv3 packages in the dependencies,
 <br>&emsp;&emsp;a dialog box will ask your decision.
 ```
@@ -371,7 +401,7 @@ After init, you can manage packages by tui or command line.
 	
 	F3:Next  F4:Back  F9:Exit
 ```
-##### (5). Load package file
+##### (6). Load package file
 &emsp;&emsp;After select "Load package file", when user enter the name of package list file and enter
 "OK", dnf tui will install the package which in the list.
 ```
@@ -390,7 +420,7 @@ After init, you can manage packages by tui or command line.
            └────────────────────────────────────────────────────────┘
 ```
 
-##### (6). Reference   
+##### (7). Reference   
 &emsp;&emsp;In "Select install type" interface, user can choose Reference1 to install busybox based root 
 file system or Reference2 to install systemd based root file system.
 ```
