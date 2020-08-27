@@ -340,8 +340,13 @@ class TuiCommand(commands.Command):
         
         if display_pkgs:
             for pkg in display_pkgs:
-                if pkg.name in config_list:
-                    selected_pkgs.append(pkg)
+                for config_pkg in config_list:
+                    if pkg.name == config_pkg:
+                        selected_pkgs.append(pkg)
+                    elif pkg.name == "lib32-" + config_pkg:
+                        selected_pkgs.append(pkg)
+                    elif pkg.name == "lib64-" + config_pkg:
+                        selected_pkgs.append(pkg)
             selected_pkgs = list(set(selected_pkgs))
             f.close()
             return selected_pkgs
