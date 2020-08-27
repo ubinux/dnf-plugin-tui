@@ -190,6 +190,7 @@ def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
     conflicts = []
     num = []
     system_installed = []
+    conflict_tag = False
     for selected_pkg in selected_pkgs:
         goal.install(selected_pkg)
     for selected_pkg_spec in selected_pkgs_spec:
@@ -198,10 +199,14 @@ def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
     conflict_pkgs = goal.problem_conflicts()
     conflict_rules = goal.problem_rules()
     for i in range(len(conflict_rules)):
-        if conflict_rules[i][0] == 'conflicting requests':
+        conflict_tag = False
+        for j in range(len(conflict_rules[i])):
+            if 'conflicts with' in conflict_rules[i][j]:
+                conflicts.append({})
+                conflict_tag = True
+                break
+        if conflict_tag == False:
             num.append(i)
-            continue
-        conflicts.append({})
     for i in reversed(num):
         del conflict_rules[i]
     for conflict_pkg in conflict_pkgs:
