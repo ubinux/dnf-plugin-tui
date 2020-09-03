@@ -1198,6 +1198,13 @@ def PKGINSTPathInputWindow(insScreen, check_dir_exist, title, label, text_prev="
                     (w, h) = GetButtonMainSize(insScreen)
                     rr = ButtonInfoWindow(insScreen, "  Error !  ", "Not a correct path! Input again, please !", \
                                           w, h, buttons)
+            elif str == "":
+                buttons = ['  OK  ']
+                (w, h) = GetButtonMainSize(insScreen)
+                rr = ButtonInfoWindow(insScreen, \
+                                      "  Error !  ", \
+                                      "The file name is empty. Please enter the file name ! ", \
+                                      w, h, buttons)
             else:
                 real_path=os.path.realpath(str)
                 folder=os.path.split(real_path)
