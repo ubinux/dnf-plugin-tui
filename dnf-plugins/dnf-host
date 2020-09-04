@@ -156,6 +156,7 @@ travFolder () {
                     if [ $? -ne 0 ]; then
                         echo -n "$line:" >> $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
                         echo -n " $line" >> $HIDDEN_ROOTFS_DIR/etc/rpmrc
+                        echo -n "%_var /var" >> $HIDDEN_ROOTFS_DIR/etc/rpm/macros
                     fi
                 fi
             fi
