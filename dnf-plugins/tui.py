@@ -547,10 +547,15 @@ class TuiCommand(commands.Command):
                     stage = STAGE_PACKAGE
         return  (stage, result, selected_pkgs, pkgs_spec, cancel_pkgs, confirm_type)
 
-    def pkgTypeDisp(self, custom_type, pkgTypeList):
+    def pkgTypeDisp(self, custom_type, pkgTypeList, pkg_installed):
         if custom_type == RECORD_INSTALL:
             # get packagelist from .config
             pkgConfigList = self.Read_ConfigFile()
+            pkgConfigList_temp = copy.deepcopy(pkgConfigList)
+            for pkg in pkgConfigList_temp:
+                for pkg_install in pkg_installed:
+                    if pkg == pkg_install.name:
+                        pkgConfigList.remove(pkg)
             strings_pattern_end = ['-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic']
             for pkgName in pkgConfigList:
                 if "-locale-" in pkgName or "-localedata-" in pkgName:
@@ -820,7 +825,7 @@ class TuiCommand(commands.Command):
                 # select package type
                 #==============================
                 elif stage == STAGE_PKG_TYPE:
-                    (stage, pkgTypeList) = self.pkgTypeDisp(custom_type, pkgTypeList)
+                    (stage, pkgTypeList) = self.pkgTypeDisp(custom_type, pkgTypeList, ypl.installed)
                 #==============================
                 # select special packages(local, dev, dbg, doc, src)
                 #==============================
@@ -962,8 +967,15 @@ class TuiCommand(commands.Command):
             if len(display_pkgs) == 0:
                 if self.install_type == ACTION_INSTALL:
                     if custom_type >= RECORD_INSTALL:
+                        pkg_installed = ypl.installed
                         selected_pkgs = []
-                        selected_pkgs = self.Read_ConfigFile(packages, selected_pkgs)
+                        selected_pkgs_temp = []
+                        selected_pkgs_temp = self.Read_ConfigFile(packages, selected_pkgs_temp)
+                        for selected_pkg_temp in selected_pkgs_temp:
+                            if selected_pkg_temp not in pkg_installed:
+                                #Since it is impossible to deep copy the object list,
+                                #if it is not installed, add it to selected_pkgs.
+                                selected_pkgs.append(selected_pkg_temp)
                         return ("n", selected_pkgs, packages, cancel_pkgs)
                     conflicts = conflictDetection(self.base, conflict_attach_pkgs)
                     if conflicts != []:
@@ -1037,8 +1049,15 @@ class TuiCommand(commands.Command):
 
         # Load package file or sample
         if custom_type >= RECORD_INSTALL:
+            pkg_installed = ypl.installed
             selected_pkgs = []
-            selected_pkgs = self.Read_ConfigFile(display_pkgs, selected_pkgs)
+            selected_pkgs_temp = []
+            selected_pkgs_temp = self.Read_ConfigFile(display_pkgs, selected_pkgs_temp)
+            for selected_pkg_temp in selected_pkgs_temp:
+                if selected_pkg_temp not in pkg_installed:
+                    #Since it is impossible to deep copy the object list,
+                    #if it is not installed, add it to selected_pkgs.
+                    selected_pkgs.append(selected_pkg_temp)
 
         while True:
             if stage == STAGE_SELECT:
