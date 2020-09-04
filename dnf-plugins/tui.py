@@ -279,13 +279,13 @@ class TuiCommand(commands.Command):
             cmd.cli.demands = copy.deepcopy(self.cli.demands)
             cmd.configure()
             cmd.run()
-        except:
-            pass
-#        except Exception as e:
-#            logger.error(_("%s."), e)
-#            StopHotkeyScreen(self.screen)
-#            self.screen = None
-#            sys.exit(0)
+#        except:
+#            pass
+        except Exception as e:
+            logger.error(_("%s."), e)
+            StopHotkeyScreen(self.screen)
+            self.screen = None
+            sys.exit(0)
 
     def PKG_filter(self, packages):
         strings_pattern_end = ('-dev', '-doc', '-dbg', '-staticdev', '-ptest', '-src', '-lic')
@@ -642,19 +642,23 @@ class TuiCommand(commands.Command):
                     selected_pkgs.remove(cancel_pkg)
                 if cancel_pkg in selected_pkgs_spec:
                     selected_pkgs_spec.remove(cancel_pkg)
-            for pkg in selected_pkgs:           #selected_pkgs
-                if self.install_type == ACTION_INSTALL:
-                    s_line = ["install", pkg.name]
-                elif self.install_type == ACTION_REMOVE:
-                    s_line = ["remove", pkg.name]
-                elif self.install_type == ACTION_UPGRADE:
-                    s_line = ["upgrade", pkg.name]
-                self.run_dnf_command(s_line)
-
             if self.install_type == ACTION_INSTALL:
+                s_line = ["install"]
+                for pkg in selected_pkgs:           #selected_pkgs
+                    s_line.append(pkg.name)
                 for pkg in selected_pkgs_spec:
-                    s_line = ["install", pkg.name]
-                    self.run_dnf_command(s_line)
+                    s_line.append(pkg.name)
+            elif self.install_type == ACTION_REMOVE:
+                s_line = ["remove"]
+                for pkg in selected_pkgs:           #selected_pkgs
+                    s_line.append(pkg.name)
+            elif self.install_type == ACTION_UPGRADE:
+                s_line = ["upgrade"]
+                for pkg in selected_pkgs:           #selected_pkgs
+                    s_line.append(pkg.name)
+            #Determine whether there are parameters after install, remove, and upgrade.
+            if len(s_line) != 1:
+                self.run_dnf_command(s_line)
 
             if self.no_gpl3:
                 try:
