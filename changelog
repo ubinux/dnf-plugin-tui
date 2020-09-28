@@ -1,3 +1,17 @@
+2020/09/28:
+Release v1.2.
+1.Fix the bug of empty conflict group in conflict handling.
+
+2.Fix that packages with the prefix lib32- or lib64- cannot be selected through the default configuration file.
+
+3.Fix the bug that the package could not be removed correctly when removing.
+
+4.Fix the bug that the config file exits abnormally when the file name is empty.
+
+5.Fix the bug of using the config file to install the installed package.
+
+6.Fix the bug that cannot be packaged.
+
 2020/03/04:
 Release v1.1.
 1. Added conflict handling module.
