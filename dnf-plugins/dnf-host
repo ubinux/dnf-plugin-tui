@@ -243,6 +243,9 @@ dnf-init() {
     if [ -f .md5 ];then
         rm .md5
     fi
+    if [ -d pseudo ];then
+        rm -rf pseudo
+    fi
     if [ -d $HIDDEN_ROOTFS_DIR ];then
         echo "Deleting temp rootfs......"
         rm -rf $HIDDEN_ROOTFS_DIR
