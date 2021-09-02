@@ -257,6 +257,79 @@ def HotkeyExitWindow(insScreen, confirm_type=0):
     return result
 
 #------------------------------------------------------------
+# def HotkeyNotExistWindow(insScreen, not_exist_pkgs)
+#
+#   Display this window when there are packages which user wants to install not existing in repo.
+#
+# Input:
+#   insScreen : screen instance
+#   not_exist_pkgs : list of packages which user wants to install not existing in repo.
+# Output:
+#   int       : "y" or "n"
+#------------------------------------------------------------
+def HotkeyNotExistWindow(insScreen, not_exist_pkgs):
+
+    result = HotkeyNotExistJudgeWindow(insScreen, "Packges not found", \
+                 "Ignore the following packages to continue the installation?", \
+                 not_exist_pkgs,
+                 60, 10)
+
+    return result
+
+#------------------------------------------------------------
+# def HotkeyNotExistJudgeWindow()
+#
+#   Display information window for not exist packages.
+#
+# Input:
+#   insScreen             : screen instance
+#   sTitle                : title string
+#   sText                 : text string
+#   nofind_list           : list of nofind packages
+#   iWidth                : width of main text
+#   iHeight               : height of main text
+# Output:
+#   str : rtncode in Hotkey dictionary
+#------------------------------------------------------------
+def HotkeyNotExistJudgeWindow(insScreen, sTitle, sText, nofind_list, iWidth, iHeight):
+
+    # Get line number
+    if len(nofind_list) > iHeight:
+        scroll = 1
+    else:
+        scroll = 0
+
+    # Create Text instance
+    t1 = snack.Textbox(iWidth - scroll * 2, 2, sText)
+    t2 = snack.Listbox(iHeight, scroll = scroll, width = iWidth - scroll * 2)
+    t3 = snack.Textbox(iWidth, 1, "-" * iWidth)
+
+    idx = 0
+    for nofind_item in nofind_list:
+        t2.append(nofind_item, idx)
+        idx += 1
+
+    b = snack.ButtonBar(insScreen,((" Yes ", "y"), (" No ", "n")))
+
+    # Create Grid instance
+    g = snack.GridForm(insScreen, sTitle, 1, 4)
+    g.add(t1, 0, 0)
+    g.add(t2, 0, 1)
+    g.add(t3, 0, 2, (-1, 0, -1, 0))
+    g.add(b, 0, 3, (1, 0, 1, -1))
+
+    # Display window
+    result = g.run()
+
+    # Return
+    insScreen.popWindow()
+
+    if b.buttonPressed(result) == "y":
+       return 'y'
+    elif b.buttonPressed(result) == "n":
+       return 'n'
+
+#------------------------------------------------------------
 # def HotkeyConflictWindow(insScreen, conflicts)
 #
 #   Display "Conflict handle" window.

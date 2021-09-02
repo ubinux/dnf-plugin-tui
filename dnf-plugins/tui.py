@@ -402,6 +402,31 @@ class TuiCommand(commands.Command):
                 f.write(line.name + ", " + line.version + ", " + line.license + '\n')
             f.close()
 
+    def Get_NotExistList(self):
+        try:
+            ypl = self.base.returnPkgLists(
+                self.pkgnarrow, self.patterns, self.installed_available, self.reponame)
+        except dnf.exceptions.Error as e:
+            return 1, [str(e)]
+
+        package_list = ypl.available + ypl.installed
+        name_list = []
+        for package_item in package_list:
+            name_list.append(package_item.name)
+
+        f = open(self.config_file, "r")
+        get_text = f.read()
+        config_list = get_text.split('\n')
+        if config_list[-1] == "":
+            del config_list[-1]
+
+        not_exist_pkgs_list = []
+        for config_item in config_list:
+            if config_item not in name_list:
+                not_exist_pkgs_list.append(config_item)
+
+        return not_exist_pkgs_list
+
     def Read_Samples(self):
         sample_list = []
         if os.path.isdir(SAMPLE):
@@ -477,7 +502,15 @@ class TuiCommand(commands.Command):
 
         else:
             # next
-            stage = STAGE_PACKAGE
+            not_exist_list = self.Get_NotExistList()
+            if not_exist_list:
+                hkey = HotkeyNotExistWindow(self.screen, not_exist_list)
+                if hkey == "n":
+                    stage = STAGE_CUSTOM_TYPE
+                else:
+                    stage = STAGE_PACKAGE
+            else:
+                stage = STAGE_PACKAGE
         return stage
 
     def sampleDisp(self, sample_list, sample_type):
