@@ -16,7 +16,7 @@ import hawkey
 import logging
 
 from .window import *
-from .utils import fetchSPDXorSRPM, read_environ, conflictDetection
+from .utils import fetchSPDXorSRPM, read_environ, conflictDetection, getInstalledList
 import sys, os, copy, textwrap, snack, string, time, re, shutil, hashlib
 from snack import *
 
@@ -133,11 +133,13 @@ class TuiCommand(commands.Command):
         self.patterns = None
         self.installed_available = False
         self.reponame = None
-        self.CONFIG_FILE = ".config"
+        self.config_file = ".config"
+        self.pkginfo_file = None
         self.grps = []
         self.group_flag = False #Has group info or not
         self.group_botton = False #Press hotkey 'F6' or not
-        self.SAVE = True
+        self.save = True
+        self.info_save = True
 
     @staticmethod
     def set_argparser(parser):
@@ -261,11 +263,15 @@ class TuiCommand(commands.Command):
             if self.opts.with_call:
                 logger.debug("Enter tui interface.")
                 self.PKGINSTDispMain()
+                exist_pkgs = getInstalledList(self)
+                self.Save_PackageInfo(exist_pkgs, "w")
             else:
                 pass
         else:
             logger.debug("Enter tui interface.")
             self.PKGINSTDispMain()
+            exist_pkgs = getInstalledList(self)
+            self.Save_PackageInfo(exist_pkgs, "w")
 
     def run_dnf_command(self, s_line):
         """Execute the subcommand you put in.
@@ -334,7 +340,7 @@ class TuiCommand(commands.Command):
                     os.environ['SPDX_REPO_DIR'], os.environ['SPDX_DESTINATION_DIR'])
 
     def Read_ConfigFile(self, display_pkgs=[], selected_pkgs=[]):
-        f = open(self.CONFIG_FILE, "r")
+        f = open(self.config_file, "r")
         get_text = f.read()
         config_list = get_text.split('\n')
         
@@ -367,15 +373,34 @@ class TuiCommand(commands.Command):
     def Confirm_ConfigFile(self):
         result = ""
         if self.install_type == ACTION_INSTALL:
-            self.CONFIG_FILE = ".config"
-            (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
+            self.config_file = ".config"
+            (result, self.config_file) = PKGINSTPathInputWindow(self.screen, \
                                             False, \
                                             "  Package List File  ", \
                                             "Enter the name of package list file you wish to save:", \
-                                            self.CONFIG_FILE )
+                                            self.config_file )
         if result == "cancel":
             # save config file
-            self.SAVE = False
+            self.save = False
+
+    def Confirm_PackageInfo(self):
+        date = os.popen("date +%Y%m%d%H%M").read().split("\n")[0]
+        self.pkginfo_file = "installed-packages-list-" + date + ".csv"
+        (result, self.pkginfo_file) = PKGINSTPathInputWindow(self.screen, \
+                                        False, \
+                                        "  Installed Package Info File  ", \
+                                        "Enter the name of installed package info list file you wish to save:",      \
+                                        self.pkginfo_file )
+        if result == "cancel":
+            self.info_save = False
+
+
+    def Save_PackageInfo(self, existed_pkgs, mode):
+        if self.info_save == True:
+            f = open(self.pkginfo_file, mode)
+            for line in existed_pkgs:
+                f.write(line.name + ", " + line.version + ", " + line.license + '\n')
+            f.close()
 
     def Read_Samples(self):
         sample_list = []
@@ -440,11 +465,11 @@ class TuiCommand(commands.Command):
         return (stage, sample_type, custom_type)
     
     def recordDisp(self):
-        (result, self.CONFIG_FILE) = PKGINSTPathInputWindow(self.screen, \
+        (result, self.config_file) = PKGINSTPathInputWindow(self.screen, \
                                                       True, \
                                                       "  Package List File  ", \
                                                       "Enter the name of package list file you wish to load:", \
-                                                      self.CONFIG_FILE )
+                                                      self.config_file )
 
         if result == "cancel":
             # back
@@ -464,7 +489,7 @@ class TuiCommand(commands.Command):
             StopHotkeyScreen(self.screen)
             self.screen = None
             sys.exit(0)
-        self.CONFIG_FILE = config_file
+        self.config_file = config_file
         stage = STAGE_PACKAGE
         return stage
 
@@ -642,6 +667,8 @@ class TuiCommand(commands.Command):
             self.GET_ALL(selected_pkgs)
             return ("b", stage)
         else:
+            self.Confirm_PackageInfo()
+
             for cancel_pkg in cancel_pkgs:
                 if cancel_pkg in selected_pkgs:
                     selected_pkgs.remove(cancel_pkg)
@@ -686,11 +713,11 @@ class TuiCommand(commands.Command):
                     if hkey == "y":
                         self.Confirm_ConfigFile()
                         if self.install_type == ACTION_INSTALL:
-                            if self.SAVE == True:
-                                self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                            if self.save == True:
+                                self.Save_ConfigFile(selected_pkgs, self.config_file, "w")
                                 #selected_pkgs_spec
                                 if selected_pkgs_spec:
-                                    self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
+                                    self.Save_ConfigFile(selected_pkgs_spec, self.config_file, "a")
                         if self.screen != None:
                             StopHotkeyScreen(self.screen)
                             self.screen = None
@@ -709,11 +736,11 @@ class TuiCommand(commands.Command):
                     confirm_type = CONFIRM_INSTALL
                     hkey = HotkeyExitWindow(self.screen, confirm_type)
                     if hkey == "y":
-                        if self.SAVE == True:
-                            self.Save_ConfigFile(selected_pkgs, self.CONFIG_FILE, "w")
+                        if self.save == True:
+                            self.Save_ConfigFile(selected_pkgs, self.config_file, "w")
                             #selected_pkgs_spec
                             if selected_pkgs_spec:
-                                self.Save_ConfigFile(selected_pkgs_spec, self.CONFIG_FILE, "a")
+                                self.Save_ConfigFile(selected_pkgs_spec, self.config_file, "a")
                     elif hkey == "n":
                         stage = STAGE_PKG_TYPE
                         return (" ", stage)

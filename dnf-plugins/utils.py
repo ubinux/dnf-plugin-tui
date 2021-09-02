@@ -21,6 +21,7 @@ from dnf.i18n import _
 import dnf.util
 import logging
 import os
+import copy
 import time
 import re, shutil, urllib.request, librepo, filecmp
 
@@ -225,3 +226,30 @@ def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
                 conflict[package] = INSTALLED_PKG
     base.reset(goal=True)
     return conflicts
+
+def getInstalledList(self):
+    try:
+        ypl = self.base.returnPkgLists(
+            self.pkgnarrow, self.patterns, self.installed_available, self.reponame)
+    except dnf.exceptions.Error as e:
+        return 1, [str(e)]
+    handle_list = copy.copy(ypl.installed)
+    goal = self.base._goal
+
+    self.base._run_hawkey_goal(goal, False)
+    install_list = goal.list_installs()
+    remove_list = goal.list_erasures()
+    upgrade_list = goal.list_upgrades()
+    for install_item in install_list:
+        if install_item not in handle_list:
+            handle_list.append(install_item)
+    for remove_item in remove_list:
+        if remove_item in handle_list:
+            handle_list.remove(remove_item)
+    for upgrade_item in upgrade_list:
+        for handle_item in handle_list:
+            if upgrade_item.name == handle_item.name:
+                handle_list.remove(handle_item)
+                handle_list.append(upgrade_item)
+
+    return handle_list
