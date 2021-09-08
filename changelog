@@ -1,3 +1,11 @@
+2021/09/08:
+Release v1.3.
+1.When installing with package list, add the function of detecting whether the package exists.
+
+2.Added the function of generating installed package info csv file.
+
+3.Delete the pseudo directory in each init phase.
+
 2020/09/28:
 Release v1.2.
 1.Fix the bug of empty conflict group in conflict handling.
