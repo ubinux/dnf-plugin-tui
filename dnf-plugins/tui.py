@@ -211,7 +211,7 @@ class TuiCommand(commands.Command):
                     tar = False
                     old_md5 = None
 
-                    rpm_dbfile = self.opts.installroot + "/var/lib/rpm/Packages"
+                    rpm_dbfile = self.opts.installroot + "/var/lib/rpm/rpmdb.sqlite"
                     if os.path.exists(rpm_dbfile):
                         f1 = open(rpm_dbfile, 'rb')
                         old_md5 = hashlib.md5(f1.read()).hexdigest()
@@ -227,6 +227,8 @@ class TuiCommand(commands.Command):
                     if old_md5:
                         f2 = open(rpm_dbfile, 'rb')
                         new_md5 = hashlib.md5(f2.read()).hexdigest()
+                        #old_md5 and new_md5 is compared to determine whether the RPM source has changed,
+                        #so as to determine whether rootfs needs to be packaged
                         if old_md5 != new_md5:
                             tar = True
                     elif os.path.exists(rpm_dbfile):
