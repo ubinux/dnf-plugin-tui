@@ -237,9 +237,22 @@ def getInstalledList(self):
     goal = self.base._goal
 
     self.base._run_hawkey_goal(goal, False)
-    install_list = goal.list_installs()
-    remove_list = goal.list_erasures()
-    upgrade_list = goal.list_upgrades()
+    try:
+        install_list = goal.list_installs()
+    except Exception as e:
+        Save_CSVInfo(str(e))
+        install_list = []
+    try:
+        remove_list = goal.list_erasures()
+    except Exception as e:
+        Save_CSVInfo(str(e))
+        remove_list = []
+    try:
+        upgrade_list = goal.list_upgrades()
+    except Exception as e:
+        Save_CSVInfo(str(e))
+        upgrade_list = []
+
     for install_item in install_list:
         if install_item not in handle_list:
             handle_list.append(install_item)
@@ -253,3 +266,8 @@ def getInstalledList(self):
                 handle_list.append(upgrade_item)
 
     return handle_list
+
+def Save_CSVInfo(except_str):
+    f = open("dnf.csv.log", "w")
+    f.write(except_str + '\n')
+    f.close()

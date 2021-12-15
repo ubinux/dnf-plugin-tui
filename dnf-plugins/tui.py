@@ -265,15 +265,17 @@ class TuiCommand(commands.Command):
             if self.opts.with_call:
                 logger.debug("Enter tui interface.")
                 self.PKGINSTDispMain()
-                exist_pkgs = getInstalledList(self)
-                self.Save_PackageInfo(exist_pkgs, "w")
+                if self.info_save == True:
+                    exist_pkgs = getInstalledList(self)
+                    self.Save_PackageInfo(exist_pkgs, "w")
             else:
                 pass
         else:
             logger.debug("Enter tui interface.")
             self.PKGINSTDispMain()
-            exist_pkgs = getInstalledList(self)
-            self.Save_PackageInfo(exist_pkgs, "w")
+            if self.info_save == True:
+                exist_pkgs = getInstalledList(self)
+                self.Save_PackageInfo(exist_pkgs, "w")
 
     def run_dnf_command(self, s_line):
         """Execute the subcommand you put in.
@@ -398,11 +400,10 @@ class TuiCommand(commands.Command):
 
 
     def Save_PackageInfo(self, existed_pkgs, mode):
-        if self.info_save == True:
-            f = open(self.pkginfo_file, mode)
-            for line in existed_pkgs:
-                f.write(line.name + ", " + line.version + ", " + line.license + '\n')
-            f.close()
+        f = open(self.pkginfo_file, mode)
+        for line in existed_pkgs:
+            f.write(line.name + ", " + line.version + ", " + line.license + '\n')
+        f.close()
 
     def Get_NotExistList(self):
         try:
