@@ -5,31 +5,15 @@
 #
 from __future__ import absolute_import
 from __future__ import unicode_literals
+
+import sys, os, copy, textwrap, snack, string, time, re, shutil, hashlib
+from snack import *
+from subprocess import call
+import dnf
 from dnf.cli import commands
 from dnf.cli.option_parser import OptionParser
 from dnf.i18n import _
-from itertools import chain
 import dnf.subject
-
-import dnf.exceptions
-import hawkey
-import logging
-
-from .window import *
-from .utils import fetchSPDXorSRPM, read_environ, conflictDetection, getInstalledList
-import sys, os, copy, textwrap, snack, string, time, re, shutil, hashlib
-from snack import *
-
-from .Define import _TXT_ROOT_TITLE, Install_actions, Custom_actions, Image_types
-from .mkimg.MKIMGJFFS2Window import *
-from .mkimg.MKIMGINITRAMFSWindow import *
-from .mkimg.MKIMGINITRDWindow import *
-from .mkimg.MKIMGRAWWindow import *
-from .mkimg.MKIMGSquashFSWindow import *
-from .mkimg.MKIMGUBIFSWindow import *
-from .mkimg.MKIMGInfo import *
-
-import dnf
 import dnf.cli.demand
 import dnf.cli.option_parser
 import dnf.cli.commands.shell
@@ -45,7 +29,22 @@ import dnf.persistor
 import dnf.rpm
 import dnf.cli.utils
 import dnf.yum.misc
-from subprocess import call
+import dnf.exceptions
+import hawkey
+import logging
+from itertools import chain
+
+from .window import *
+from .utils import fetchSPDXorSRPM, read_environ, conflictDetection, getInstalledList
+from .postin import *
+from .Define import _TXT_ROOT_TITLE, Install_actions, Custom_actions, Image_types
+from .mkimg.MKIMGJFFS2Window import *
+from .mkimg.MKIMGINITRAMFSWindow import *
+from .mkimg.MKIMGINITRDWindow import *
+from .mkimg.MKIMGRAWWindow import *
+from .mkimg.MKIMGSquashFSWindow import *
+from .mkimg.MKIMGUBIFSWindow import *
+from .mkimg.MKIMGInfo import *
 
 #Make image function entrance
 Image_type_functions = { 0: [MKIMGJFFS2WindowCtrl, MKIMGConfirmJFFS2WindowCtrl],
@@ -140,6 +139,7 @@ class TuiCommand(commands.Command):
         self.group_botton = False #Press hotkey 'F6' or not
         self.save = True
         self.info_save = True
+        self.postinst = Postinst(cli)
 
     @staticmethod
     def set_argparser(parser):
@@ -215,6 +215,9 @@ class TuiCommand(commands.Command):
                     if os.path.exists(rpm_dbfile):
                         f1 = open(rpm_dbfile, 'rb')
                         old_md5 = hashlib.md5(f1.read()).hexdigest()
+                    self.postinst = Postinst(self.cli)
+                    self.postinst._initialize_intercepts()
+
 
                     exit_code = call(["dnf", "tui", "--call", "-c{}".format(
                                       self.opts.config_file_path), "--installroot={}".format(
@@ -222,6 +225,7 @@ class TuiCommand(commands.Command):
                                       self.opts.logdir), "--releasever=None"])
                     if exit_code != 0:
                         raise dnf.exceptions.Error(_("Failed to call dnf tui"))
+                    self.postinst.run_intercepts()
                     
                     #When you choose tui, the rootfs will be made only after pkg operation
                     if old_md5:
