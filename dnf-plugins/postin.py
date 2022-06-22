@@ -9,7 +9,6 @@ from dnf.cli import commands
 from subprocess import call
 
 logger = logging.getLogger('dnf')
-logging.basicConfig(level=logging.DEBUG)
 
 class Postinst(commands.Command):
     """A class containing methods to create postinstall scipt.
