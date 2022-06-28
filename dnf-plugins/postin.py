@@ -115,4 +115,4 @@ class Postinst(commands.Command):
                 output = subprocess.check_output(script_full, stderr=subprocess.STDOUT)
                 if output: logger.debug(output.decode("utf-8"))
             except subprocess.CalledProcessError as e:
-                 logger.error("The postinstall intercept hook '%s' failed" % script)
+                 logger.error("Exit code %d. Output:\n%s" % (e.returncode, e.output.decode("utf-8")))
