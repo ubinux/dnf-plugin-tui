@@ -34,6 +34,7 @@ import hawkey
 import logging
 from itertools import chain
 
+from .rpm import *
 from .window import *
 from .utils import fetchSPDXorSRPM, read_environ, conflictDetection, getInstalledList
 from .postin import *
@@ -177,7 +178,12 @@ class TuiCommand(commands.Command):
                 if os.path.exists(env_path):
                     # Before using dnf in cross-environment, source env path first
                     read_environ(env_path)
-
+                    self.pm = RpmPM(os.environ['HIDDEN_ROOTFS'],
+                                         os.environ['TARGET_VENDOR'],
+                                         rpm_repo_workdir=os.environ['REPO_DIR'],
+                                         needfeed=False
+                                        )
+                    self.pm.create_configs()
                     install_root_from_env = os.environ['HIDDEN_ROOTFS']
                     self.opts.installroot = install_root_from_env
                     self.opts.config_file_path = install_root_from_env + "/etc/dnf/dnf-host.conf"

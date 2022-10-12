@@ -103,6 +103,7 @@ export_env () {
     echo "POSTINST_INTERCEPTS=${SDKPATH}/postinst-intercepts" >> $WORKDIR/.env-dnf
     echo "NATIVE_ROOT=$OECORE_NATIVE_SYSROOT" >> $WORKDIR/.env-dnf
     echo "RPM_ETCCONFIGDIR=$HIDDEN_ROOTFS_DIR" >> $WORKDIR/.env-dnf
+    echo "RPM_PREFER_ELF_ARCH=1" >> $WORKDIR/.env-dnf
 }
 
 check_para () {
@@ -156,7 +157,6 @@ travFolder () {
                     if [ $? -ne 0 ]; then
                         echo -n "$line:" >> $HIDDEN_ROOTFS_DIR/etc/dnf/vars/arch
                         echo -n " $line" >> $HIDDEN_ROOTFS_DIR/etc/rpmrc
-                        echo -n "%_var /var" > $HIDDEN_ROOTFS_DIR/etc/rpm/macros
                     fi
                 fi
             fi
