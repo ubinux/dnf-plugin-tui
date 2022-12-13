@@ -32,8 +32,6 @@ class RpmPM():
         distro_codename = os.environ['DISTRO_CODENAME']
         open(confdir + "releasever", 'w').write(distro_codename if distro_codename is not None else '')
         open(os.path.join(self.target_rootfs, "etc/dnf/dnf.conf"), 'w').write("")
-    
-
 
     def _configure_rpm(self):
         # We need to configure rpm to use our primary package architecture as the installation architecture,
@@ -47,7 +45,7 @@ class RpmPM():
             f.write("%_transaction_color 7\n")
             f.write("%_var /var\n")
 
-        if os.environ['RPM_PREFER_ELF_ARCH']:
+        if os.getenv('RPM_PREFER_ELF_ARCH', 'null') != 'null':
             open(platformconfdir + "macros", 'a').write("%%_prefer_color %s" % (os.environ['RPM_PREFER_ELF_ARCH']))
 
     def create_configs(self):
