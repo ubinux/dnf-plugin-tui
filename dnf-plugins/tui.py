@@ -139,7 +139,7 @@ class TuiCommand(commands.Command):
         self.group_flag = False #Has group info or not
         self.group_botton = False #Press hotkey 'F6' or not
         self.save = True
-        self.info_save = True
+        self.info_save = False
         self.postinst = Postinst(cli)
 
     @staticmethod
@@ -405,8 +405,8 @@ class TuiCommand(commands.Command):
                                         "  Installed Package Info File  ", \
                                         "Enter the name of installed package info list file you wish to save:",      \
                                         self.pkginfo_file )
-        if result == "cancel":
-            self.info_save = False
+        if result == "ok":
+            self.info_save = True
 
 
     def Save_PackageInfo(self, existed_pkgs, mode):
