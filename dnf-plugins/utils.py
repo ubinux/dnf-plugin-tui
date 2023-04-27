@@ -74,7 +74,7 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
                 for dir in dirs:
                     find_dir(root + '/' + dir, file_name)
 
-    def copy_package(option, pkgname):
+    def copy_package(option, pkgname, non_exist_pkgs):
         #src_path = srcdir_path + '/' + pkgname
         src_path = None
         src_path = find_dir(srcdir_path, pkgname)
@@ -91,7 +91,7 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
                 logger.error(_("%s."), e)
                 return
         else:
-            logger.warning(_("%s file: %s does not exist....."), option, pkgname)
+            non_exist_pkgs.append(pkgname))
             return
 
     def http_download_file(option, pkgname):
@@ -129,13 +129,13 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
             logger.error(_("%s."), e)
             return
 
-    def fetch_package(option, type, pkgname):
+    def fetch_package(option, type, pkgname, non_exist_pkgs):
         if type == 'local':
-            copy_package(option, pkgname)
+            copy_package(option, pkgname, non_exist_pkgs)
         elif type == 'remote_http':
-            http_download_file(option, pkgname)
+            http_download_file(option, pkgname, non_exist_pkgs)
         elif type == 'remote_ftp':
-            ftp_download_file(option, pkgname)
+            ftp_download_file(option, pkgname, non_exist_pkgs)
     
     def local_path_check(path):
         if not os.path.exists(path):
@@ -170,6 +170,7 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
             logger.error(_("Create dir failed, %s."), e)
             return
   
+    non_exist_pkgs = []
     for pkg in sorted(install_pkgs):
         sourcerpm = pkg.sourcerpm
         if option == 'spdx':
@@ -178,12 +179,19 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
             match = ''.join(re.findall("-r\d{1,}.src.rpm",sourcerpm))
             '''filter the .src.rpm and r*'''
             spdxname = sourcerpm.replace(match, '') + ".spdx"   
-            fetch_package(option, type, spdxname)
+            fetch_package(option, type, spdxname, non_exist_pkgs)
         elif option == 'srpm':
-            fetch_package(option, type, sourcerpm)
+            fetch_package(option, type, sourcerpm, non_exist_pkgs)
         elif option == 'rpm':
             rpm_name = pkg.name+"-"+pkg.version+"-"+pkg.release+"."+pkg.arch+".rpm"
-            fetch_package(option, type, rpm_name)
+            fetch_package(option, type, rpm_name, non_exist_pkgs)
+
+    if non_exist_pkgs:
+        logger.warning(_("The %s file for the package below does not exist."), option.upper())
+
+    for pkgname in sorted(non_exist_pkgs):
+        logger.warning(_("- %s"), pkgname)
+        
 
 def conflictDetection(base, selected_pkgs=[], selected_pkgs_spec=[]):
     base.reset(goal=True)
