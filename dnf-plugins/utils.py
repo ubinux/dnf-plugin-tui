@@ -91,8 +91,13 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
                 logger.error(_("%s."), e)
                 return
         else:
-            non_exist_pkgs.append(pkgname))
-            return
+            if pkgname.startswith('lib32-'):
+                pkgname = pkgname.replace('lib32-', '')
+                copy_package(option, pkgname, non_exist_pkgs)
+            #logger.warning(_("%s file: %s does not exist....."), option, pkgname)
+            else:
+                non_exist_pkgs.append(pkgname)
+                return
 
     def http_download_file(option, pkgname):
         url = srcdir_path + '/' + pkgname
@@ -176,11 +181,15 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
         if option == 'spdx':
             if "-locale" in sourcerpm:
                 sourcerpm = sourcerpm.replace('-locale', '')
-            match = ''.join(re.findall("-r\d{1,}.src.rpm",sourcerpm))
-            '''filter the .src.rpm and r*'''
+            match = ''.join(re.findall(".src.rpm",sourcerpm))
+            '''filter the .src.rpm'''
             spdxname = sourcerpm.replace(match, '') + ".spdx"   
             fetch_package(option, type, spdxname, non_exist_pkgs)
         elif option == 'srpm':
+            if sourcerpm.startswith('gcc-'):
+                match = ''.join(re.findall("-r\d{1,}.src.rpm",sourcerpm))
+                '''filter the .src.rpm and r*'''
+                sourcerpm = sourcerpm.replace(match, '') + ".tar.xz"
             fetch_package(option, type, sourcerpm, non_exist_pkgs)
         elif option == 'rpm':
             rpm_name = pkg.name+"-"+pkg.version+"-"+pkg.release+"."+pkg.arch+".rpm"
@@ -189,7 +198,7 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
     if non_exist_pkgs:
         logger.warning(_("The %s file for the package below does not exist."), option.upper())
 
-    for pkgname in sorted(non_exist_pkgs):
+    for pkgname in sorted(set(non_exist_pkgs),key=non_exist_pkgs.index):
         logger.warning(_("- %s"), pkgname)
         
 
