@@ -394,11 +394,40 @@ compress_or_decompress() {
     wait ${child_PID}
     return ${total_files}
 }
+# From poky4.3, by default, usrmerge was enabled. 
+# Binaries won't be installed to /sbin, /bin.
+# So it is necessary to judge if create symlinks 
+# from /sbin to /usr/sbin, /bin to /usr/bin to 
+# make kernel can find /sbin/init to start system.
+create_merged_usr_symlinks() {
+    cd ${HIDDEN_ROOTFS}
+    if [ ! -d "bin" ]; then
+        if [ -d "usr/bin" ]; then
+            ln -rs usr/bin bin
+        fi
+    fi
+    if [ ! -d "sbin" ]; then
+        if [ -d "usr/sbin" ]; then
+            ln -rs usr/sbin sbin
+        fi
+    fi
+    if [ ! -d "lib64" ]; then
+        if [ -d "usr/lib64" ]; then
+            ln -rs usr/lib64 lib64
+        fi
+    fi
+    if [ ! -d "lib" ]; then
+        if [ -d "usr/lib" ]; then
+            ln -rs usr/lib lib
+        fi
+    fi
+}
 
 # 1. Compress the rootfs to tarball
 # 2. Decompress tarball to rootfs destination
 Put_rootfs_to_destination(){
     dnf_for_cross_env clean all -q
+    create_merged_usr_symlinks
     cd ${HIDDEN_ROOTFS}
     echo "Prepare rootfs"
     compress_or_decompress ../${ROOTFS_TAR} ./*
