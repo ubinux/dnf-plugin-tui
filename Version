@@ -1,1 +1,8 @@
-1.3
+Version: 1.3
+
+Version upgrade rules:
+At the timing of the monthly ubinux release, if there's upgrade since the ubinux release in the previous release, so upgrade the version. 
+For example:
+Ubinux-2023.11 uses the version of 1.3, and if ubinux-2023.12 updateds the source of dnf-plugin-tui, so upgrade version of dnf-plugin-tui to 1.4.
+Ubinux-2023.11 uses the version of 1.3, and if ubinux-2023.12 does not update dnf-plugin-tui, so version of dnf-plugin-tui remains 1.3..
+Naming rules are the same as 1.3, 1.4, 1.5...
