@@ -187,7 +187,7 @@ def fetchSPDXorSRPM(option, install_pkgs, srcdir_path, destdir_path):
             fetch_package(option, type, spdxname, non_exist_pkgs)
         elif option == 'srpm':
             if sourcerpm.startswith('gcc-'):
-                match = ''.join(re.findall("-r\d{1,}.src.rpm",sourcerpm))
+                match = ''.join(re.findall("-r\\d{1,}.src.rpm",sourcerpm))
                 '''filter the .src.rpm and r*'''
                 sourcerpm = sourcerpm.replace(match, '') + ".tar.xz"
             fetch_package(option, type, sourcerpm, non_exist_pkgs)
